@@ -226,6 +226,7 @@ class Agent:
                                     source = next((s for s in sources if s.get("source") == "campus" and s["hole_id"] == item["hole_id"] and s["floor_id"] == item["floor_id"]), None)
                                     fields = {**item, "title": f"树洞 #{item['hole_id']} · 楼层 ID {item['floor_id']}",
                                               "snippet": item["content"], "published_at": item["time_created"], "is_mock": False}
+                                    fields.pop("content")  # One copy of each body in model context and session sources.
                                     if source is None:
                                         source = {**fields, "id": f"C{1 + sum(s.get('source') == 'campus' for s in sources)}"}
                                         sources.append(source)
