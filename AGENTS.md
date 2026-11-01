@@ -44,6 +44,7 @@ Write commit messages in English using this format:
 - Scope is optional; use stable module names such as `auth`, `posts`, or `search`. Keep the summary short, specific, and imperative, without a trailing period.
 - When details are needed, leave a blank line after the subject and write the body as unordered list items beginning with `- `. Omit the body for simple commits.
 - Keep commits atomic. Do not mix unrelated formatting, dependency, or version changes, or merge temporary commits such as `WIP` or `fixup!`.
+- Commit promptly after each small, coherent change is complete and its relevant checks pass. Do not wait until the entire task or milestone is finished, or for a separate user reminder; keep each commit independently reviewable.
 - For breaking changes, use `<type>(<scope>)!: <summary>` (or `<type>!: <summary>` without a scope) and include a `BREAKING CHANGE:` footer explaining the impact and migration steps.
 
 ### Pull Requests
