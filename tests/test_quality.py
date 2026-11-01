@@ -16,9 +16,10 @@ from test_chat import call, completion, events, search_result
 
 
 @pytest.fixture(autouse=True)
-def clean_config(monkeypatch):
+def clean_config(monkeypatch, tmp_path):
     for field in Settings.model_fields:
         monkeypatch.delenv(field.upper(), raising=False)
+    monkeypatch.setenv("CAMPUS_AUTH_FILE", str(tmp_path / "absent-tokens.json"))
 
 
 def config(**kwargs):

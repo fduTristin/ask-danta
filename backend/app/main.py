@@ -29,12 +29,12 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
         ) as client:
             app.state.search = SearchService(settings, client)
             app.state.campus = CampusService(settings, client)
-            app.state.agent = Agent(settings, ModelService(settings, client), app.state.search)
+            app.state.agent = Agent(settings, ModelService(settings, client), app.state.search, campus=app.state.campus)
             app.state.sessions = {}
             yield
             app.state.sessions.clear()
 
-    app = FastAPI(title="Campus Agent", version="0.3.0", lifespan=lifespan)
+    app = FastAPI(title="Campus Agent", version="0.4.0", lifespan=lifespan)
 
     @app.exception_handler(SearchError)
     @app.exception_handler(ModelError)
@@ -56,7 +56,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
     @app.get("/api/health")
     async def health():
         return {
-            "status": "ok", "stage": 3,
+            "status": "ok", "stage": 4,
             "model": {
                 "name": settings.model_name,
                 "configured": bool(settings.model_api_key.get_secret_value()),
@@ -71,7 +71,10 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                 "configured": settings.search_configured,
                 "is_mock": settings.search_provider == "mock",
             },
-            "campus": {"credentials_present": settings.auth_path.is_file(), "available": False},
+            "campus": {"credentials_present": settings.auth_path.is_file(), "available": False,
+                       "auth_state": app.state.campus.auth_state(),
+                       "tools_enabled": app.state.campus.auth_state() == "configured"},
+            "skills": [app.state.agent.skill.name],
             "budgets": {
                 "http_timeout_seconds": settings.http_timeout_seconds,
                 "model_timeout_seconds": settings.model_timeout_seconds,
@@ -132,6 +135,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
         session = get_session(session_id)
         ensure_idle(session)
         session.history.clear()
+        session.web_history.clear()
         session.messages.clear()
         session.sources.clear()
         return session.public()
@@ -160,7 +164,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                 session.busy = False
 
         async def stream():
-            events = app.state.agent.events(session, body.message)
+            events = app.state.agent.events(session, body.message, body.source_mode)
             try:
                 async for event in events:
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"

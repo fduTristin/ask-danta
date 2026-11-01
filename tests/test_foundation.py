@@ -34,7 +34,7 @@ def test_no_credentials_startup_and_explicit_mock(tmp_path):
     with TestClient(create_app(config(campus_auth_file=tmp_path / "absent.json"), httpx.MockTransport(no_network))) as client:
         health = client.get("/api/health").json()
         assert health["status"] == "ok"
-        assert health["campus"] == {"credentials_present": False, "available": False}
+        assert health["campus"] == {"credentials_present": False, "available": False, "auth_state": "missing", "tools_enabled": False}
         assert health["model"]["configured"] is False
         result = client.post("/api/search", json={"query": "校内办事"}).json()
         assert result["is_mock"] is True
@@ -46,7 +46,7 @@ def test_health_never_exposes_secrets_or_auth_path(tmp_path):
     auth.write_text("malformed credentials", encoding="utf-8")
     with TestClient(create_app(config(model_api_key="model-secret", search_api_key="search-secret", campus_auth_file=auth))) as client:
         response = client.get("/api/health")
-        assert response.json()["campus"] == {"credentials_present": True, "available": False}
+        assert response.json()["campus"] == {"credentials_present": True, "available": False, "auth_state": "invalid", "tools_enabled": False}
         for secret in ("model-secret", "search-secret", str(auth), "malformed credentials"):
             assert secret not in response.text
 

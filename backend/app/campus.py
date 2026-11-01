@@ -98,6 +98,14 @@ class CampusService:
         self._refresh_lock = asyncio.Lock()
         self._invalid_access: str | None = None
 
+    def auth_state(self) -> str:
+        """Local eligibility only; never claim remote availability from this check."""
+        try:
+            tokens = self.store.load()
+        except CampusError as exc:
+            return "missing" if exc.code == "campus_login_required" else "invalid"
+        return "expired" if tokens.access.get_secret_value() == self._invalid_access else "configured"
+
     async def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
         # Defense in depth: even internal callers cannot send credentials elsewhere.
         allowed = (method == "POST" and url in (AUTH_BASE + "/login", AUTH_BASE + "/refresh")) or (

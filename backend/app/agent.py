@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -15,6 +16,9 @@ from .model import ModelError, ModelService
 from .search import SearchError, SearchRequest, SearchService
 from .reader import PageReader, ReadRequest
 from .prompts import SYSTEM, REVIEW
+from .campus import CampusService, CampusBudget, CampusSearchRequest, CampusThreadRequest
+from .campus_auth import CampusError
+from .research import ResearchPlan, load_research_skill
 
 TOOLS = [{"type": "function", "function": {
     "name": "search_web", "description": "检索公开网页，返回标题、来源编号、链接、摘要和可用日期。",
@@ -24,20 +28,37 @@ TOOLS = [{"type": "function", "function": {
     "parameters": ReadRequest.model_json_schema(),
 }}]
 
+CAMPUS_TOOLS = [{"type": "function", "function": {
+    "name": "search_campus_posts", "description": "搜索获授权的树洞楼层，返回洞号、楼层 ID、正文、日期和来源编号。不是公开网页搜索。",
+    "parameters": CampusSearchRequest.model_json_schema(),
+}}, {"type": "function", "function": {
+    "name": "read_campus_thread", "description": "按洞号分页读取帖子元数据和楼层上下文；每次只读取一页，不代表完整帖子。",
+    "parameters": CampusThreadRequest.model_json_schema(),
+}}]
+PLAN_TOOL = {"type": "function", "function": {
+    "name": "plan_research", "description": "复杂校园调研记录或更新子问题、证据缺口和下一步行动，应用 campus-research Skill；简单聊天不用。只记录工作计划，不记录内部思考。",
+    "parameters": ResearchPlan.model_json_schema(),
+}}
+ARGUMENTS = {"search_web": SearchRequest, "read_web": ReadRequest,
+             "search_campus_posts": CampusSearchRequest, "read_campus_thread": CampusThreadRequest,
+             "plan_research": ResearchPlan}
+
 
 def citation_ids(text: str) -> set[str]:
-    return set(re.findall(r"\[(W[1-9][0-9]*)\]", text))
+    return set(re.findall(r"\[([WC][1-9][0-9]*)\]", text))
 
 
 class ChatRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     message: str = Field(min_length=1, max_length=8000)
+    source_mode: Literal["web", "all"] | None = None
 
 
 @dataclass
 class Session:
     id: str = field(default_factory=lambda: str(uuid4()))
     history: list[dict] = field(default_factory=list)
+    web_history: list[dict] = field(default_factory=list)
     messages: list[dict] = field(default_factory=list)
     sources: list[dict] = field(default_factory=list)
     busy: bool = False
@@ -50,22 +71,32 @@ def fallback(reason: str, sources: list[dict]) -> str:
     text = f"本轮未完成完整回答：{reason}"
     actual = [source for source in sources if not source["is_mock"]]
     if actual:
-        text += "\n\n已取得以下网页摘要，尚未完成综合核对："
+        text += "\n\n已取得以下来源资料，尚未完成综合核对："
         for source in actual[-5:]:
             text += f"\n\n[{source['id']}] {source['title']}\n{source['snippet'][:500]}"
     else:
-        text += "\n\n尚无可用于核实本轮问题的真实网页资料。"
+        text += "\n\n尚无可用于核实本轮问题的真实资料。"
     return text + "\n\n资料可能不完整；可以缩小问题范围后继续追问。"
 
 
 class Agent:
-    def __init__(self, settings: Settings, model: ModelService, search: SearchService, reader: PageReader | None = None):
+    def __init__(self, settings: Settings, model: ModelService, search: SearchService, reader: PageReader | None = None,
+                 campus: CampusService | None = None):
         self.settings, self.model, self.search = settings, model, search
         self.reader = reader or PageReader(settings)
+        self.campus = campus
+        self.skill = load_research_skill()
 
-    async def events(self, session: Session, question: str):
+    async def events(self, session: Session, question: str, source_mode: str | None = None):
         # Commit only a completed turn. Disconnect/cancellation discards partial work.
-        history = [*session.history, {"role": "user", "content": question}]
+        campus_ready = self.campus is not None and self.campus.auth_state() == "configured"
+        mode = source_mode or ("all" if campus_ready else "web")
+        if mode not in ("web", "all"):
+            raise ValueError("Invalid source mode")
+        campus_allowed = mode == "all" and campus_ready
+        campus_evidence_allowed = campus_allowed
+        base_history = session.history if campus_allowed else session.web_history
+        history = [*base_history, {"role": "user", "content": question}]
         sources = [dict(source) for source in session.sources]
         current_sources: list[dict] = []
         started = time.monotonic()
@@ -74,6 +105,17 @@ class Agent:
         calls = 0
         limited = False
         warnings: list[str] = []
+        if mode == "all" and not campus_allowed:
+            warnings.append("树洞未登录或凭据失效，本轮仅使用公开网页；请在服务状态中重新登录。")
+        campus_budget = CampusBudget(self.settings.max_campus_pages)
+        plan: dict | None = None
+        used_skill = False
+
+        def available_tools():
+            return [*TOOLS, PLAN_TOOL, *(CAMPUS_TOOLS if campus_allowed and campus_budget.pages < campus_budget.max_pages else [])]
+
+        def permitted_source(source):
+            return campus_evidence_allowed or source.get("source") != "campus"
         answer = ""
         reviewed = False
         review_calls = 0
@@ -81,7 +123,10 @@ class Agent:
         retrieval_exhausted = False
         attempted: set[tuple[str, str]] = set()
         metrics = {"model_calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-        system = {"role": "system", "content": SYSTEM + "\n当前日期：" + datetime.now(timezone(timedelta(hours=8))).date().isoformat()}
+        system = {"role": "system", "content": SYSTEM + "\n当前日期：" + datetime.now(timezone(timedelta(hours=8))).date().isoformat()
+                  + "\n本轮数据源权限：" + ("公开网页与树洞只读工具。" if campus_allowed else "仅公开网页；不得调用树洞工具或引用此前树洞资料。")
+                  + "\n已加载 Skill：" + self.skill.name + "\n适用条件：" + self.skill.description + "\n" + self.skill.instructions
+                  + ("\n" + warnings[0] if warnings else "")}
 
         async def within(awaitable, end: float):
             async with asyncio.timeout(max(0, end - time.monotonic())):
@@ -95,7 +140,10 @@ class Agent:
             return message
 
         try:
-            yield {"type": "start", "session_id": session.id}
+            yield {"type": "start", "session_id": session.id, "source_mode": mode,
+                   "allowed_sources": ["web", "campus"] if campus_allowed else ["web"], "skill_loaded": self.skill.name}
+            for warning in warnings:
+                yield {"type": "source_notice", "message": warning}
             try:
                 while True:
                     limited = retrieval_exhausted or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve
@@ -111,7 +159,7 @@ class Agent:
                     if limited:
                         messages.append({"role": "system", "content": warnings[-1] + "请立即回答，明确未核实部分，不再调用工具。简单事实题只给有证据的答案或简短缺口说明，不展开无关背景。"})
                     yield {"type": "model_start", "message": "正在整理回答…" if limited else "正在理解问题和已有资料…"}
-                    message = await complete(messages, [] if limited else TOOLS)
+                    message = await complete(messages, [] if limited else available_tools())
                     if (not message.tool_calls and review_calls < 2 and self.settings.answer_review_enabled
                             and (current_sources or citation_ids(message.content or ""))):
                         reviewed = True
@@ -122,13 +170,13 @@ class Agent:
                         # If the first check requested more evidence, check the
                         # resulting answer too. This last check cannot reopen
                         # research, so both review cost and the loop are bounded.
-                        review_tools = [] if review_calls == 2 or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else TOOLS
+                        review_tools = [] if review_calls == 2 or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else available_tools()
                         message = await complete([*messages, {"role": "system", "content": REVIEW + json.dumps({"draft": message.content}, ensure_ascii=False)}], review_tools)
                         if not review_tools and message.tool_calls:
                             raise ModelError("model_ignored_review", "模型未按最终核对要求结束工具调用。")
                     if not message.tool_calls:
                         answer = message.content or ""
-                        known = {source["id"] for source in sources if not source["is_mock"]}
+                        known = {source["id"] for source in sources if not source["is_mock"] and permitted_source(source)}
                         if citation_ids(answer) - known:
                             failed = True
                             warnings.append("回答引用了不存在或合成的来源，未发布该候选答案。")
@@ -149,25 +197,54 @@ class Agent:
                             if calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve:
                                 raise SearchError("tool_budget_exhausted", "检索预算已用完，此工具未执行。")
                             calls += 1  # Invalid/unknown attempts also consume budget.
-                            if call.function.name not in ("search_web", "read_web"):
+                            if call.function.name not in ARGUMENTS:
                                 raise SearchError("unknown_tool", "不允许执行此工具。")
+                            if call.function.name in ("search_campus_posts", "read_campus_thread") and not campus_allowed:
+                                raise SearchError("source_not_allowed", "本轮未授权或无法使用树洞，只能使用公开网页。")
                             try:
-                                args = (SearchRequest if call.function.name == "search_web" else ReadRequest).model_validate_json(call.function.arguments)
+                                args = ARGUMENTS[call.function.name].model_validate_json(call.function.arguments)
                             except ValidationError:
-                                raise SearchError("invalid_tool_arguments", "工具参数无效，请按工具定义填写 query 或 source_id。") from None
-                            argument = args.query if isinstance(args, SearchRequest) else args.source_id
-                            signature = (call.function.name, " ".join(argument.lower().split()))
+                                raise SearchError("invalid_tool_arguments", "工具参数无效，请按工具定义填写参数。") from None
+                            signature = (call.function.name, " ".join(json.dumps(args.model_dump(), sort_keys=True, ensure_ascii=False).lower().split()))
                             if signature in attempted:
                                 raise SearchError("duplicate_tool_call", "本轮已尝试相同调用，请使用已有结果、换关键词或说明缺口。")
                             attempted.add(signature)
-                            if isinstance(args, SearchRequest):
+                            used_skill = True
+                            if isinstance(args, ResearchPlan):
+                                if "campus" in args.sources and not campus_allowed:
+                                    raise SearchError("source_not_allowed", "计划包含未授权的树洞来源，请调整为公开网页。")
+                                plan = args.model_dump()
+                                result = {"skill": self.skill.name, "plan": plan, "remaining_campus_pages": campus_budget.max_pages - campus_budget.pages}
+                            elif isinstance(args, (CampusSearchRequest, CampusThreadRequest)):
+                                method = self.campus.search_campus_posts if isinstance(args, CampusSearchRequest) else self.campus.read_campus_thread
+                                response = await within(method(**args.model_dump(), budget=campus_budget), deadline - reserve)
+                                result = response.model_dump(mode="json")
+                                result.update(query=args.query if isinstance(args, CampusSearchRequest) else None,
+                                              remaining_campus_pages=campus_budget.max_pages - campus_budget.pages)
+                                enriched = []
+                                for item in result["results"]:
+                                    source = next((s for s in sources if s.get("source") == "campus" and s["hole_id"] == item["hole_id"] and s["floor_id"] == item["floor_id"]), None)
+                                    fields = {**item, "title": f"树洞 #{item['hole_id']} · 楼层 ID {item['floor_id']}",
+                                              "snippet": item["content"], "published_at": item["time_created"], "is_mock": False}
+                                    if source is None:
+                                        source = {**fields, "id": f"C{1 + sum(s.get('source') == 'campus' for s in sources)}"}
+                                        sources.append(source)
+                                    else:
+                                        source.update(fields)
+                                    if isinstance(args, CampusThreadRequest):
+                                        source.update(thread_read=True)
+                                    if not any(s["id"] == source["id"] for s in current_sources):
+                                        current_sources.append(source)
+                                    enriched.append(source)
+                                result["results"] = enriched
+                            elif isinstance(args, SearchRequest):
                                 response = await within(self.search.search(args.query), deadline - reserve)
                                 result = response.model_dump(mode="json")
                                 enriched = []
                                 for item in result["results"]:
-                                    source = next((s for s in sources if s["url"] == item["url"] and s["is_mock"] == response.is_mock), None)
+                                    source = next((s for s in sources if s.get("source") != "campus" and s["url"] == item["url"] and s["is_mock"] == response.is_mock), None)
                                     if source is None:
-                                        source = {**item, "id": f"W{len(sources) + 1}", "is_mock": response.is_mock}
+                                        source = {**item, "id": f"W{1 + sum(s.get('source') != 'campus' for s in sources)}", "is_mock": response.is_mock}
                                         sources.append(source)
                                     else:
                                         source.update(item)
@@ -176,7 +253,7 @@ class Agent:
                                     enriched.append(source)
                                 result["results"] = enriched
                             else:
-                                source = next((s for s in sources if s["id"] == args.source_id), None)
+                                source = next((s for s in sources if s["id"] == args.source_id and s.get("source") != "campus"), None)
                                 if source is None:
                                     raise SearchError("unknown_source", "来源编号不存在，请先搜索。")
                                 result = await within(self.reader.read(source), deadline - reserve)
@@ -184,11 +261,14 @@ class Agent:
                                 if not any(s["id"] == source["id"] for s in current_sources):
                                     current_sources.append(source)
                             yield {"type": "tool_complete", **active_call, "result": result}
-                        except (SearchError, TimeoutError) as exc:
+                        except (SearchError, CampusError, TimeoutError) as exc:
                             if isinstance(exc, TimeoutError):
                                 retrieval_exhausted = True
-                            code = exc.code if isinstance(exc, SearchError) else "tool_budget_exhausted"
-                            error = exc.message if isinstance(exc, SearchError) else "检索时间预算已用完，停止当前搜索。"
+                            code = exc.code if isinstance(exc, (SearchError, CampusError)) else "tool_budget_exhausted"
+                            error = exc.message if isinstance(exc, (SearchError, CampusError)) else "检索时间预算已用完，停止当前搜索。"
+                            if isinstance(exc, CampusError) and code in ("campus_auth_failed", "campus_credentials_invalid", "campus_login_required", "campus_credentials_write_failed"):
+                                campus_allowed = False
+                                system["content"] += "\n树洞认证现已失效，停止树洞调用，继续公开网页并说明限制。"
                             result = {"error": {"code": code, "message": error}}
                             warnings.append(error)
                             yield {"type": "tool_error", **active_call, **result}
@@ -204,16 +284,26 @@ class Agent:
                 answer = fallback(reason, current_sources)
                 history.append({"role": "assistant", "content": answer})
             # All tool-call messages are paired before reaching this commit.
-            session.history = history
+            new_turn = history[len(base_history):]
+            session.history.extend(new_turn)
+            # Web-only requests must not resend earlier campus tool results or
+            # answers derived from them. Preserve user conditions separately.
+            if any(s.get("source") == "campus" for s in sources) and mode == "all":
+                session.web_history.extend([{"role": "user", "content": question},
+                    {"role": "assistant", "content": "本轮可能使用树洞资料；仅网页模式下省略该回答，请按用户条件重新核实。"}])
+            else:
+                session.web_history.extend(new_turn)
             session.sources = sources
             cited = citation_ids(answer)
             assistant = {"role": "assistant", "content": answer,
                          "sources": [s for s in sources if s["id"] in cited and not s["is_mock"]],
                          "warnings": warnings, "limited": limited, "reviewed": reviewed,
-                         "status": "incomplete" if failed or limited else "complete"}
+                         "status": "incomplete" if failed or limited else "complete",
+                         "source_mode": mode, "skill": self.skill.name if used_skill else None, "plan": plan,
+                         "end_reason": "error" if failed else "budget" if limited else "answered"}
             session.messages.extend([{"role": "user", "content": question}, assistant])
             metrics["elapsed_seconds"] = round(time.monotonic() - started, 3)
             yield {"type": "final", "session_id": session.id, "message": assistant,
-                   "session_sources": sources, "tool_calls": calls, "metrics": metrics}
+                   "session_sources": sources, "tool_calls": calls, "campus_pages": campus_budget.pages, "metrics": metrics}
         finally:
             session.busy = False
