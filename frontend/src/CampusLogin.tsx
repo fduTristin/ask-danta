@@ -2,11 +2,12 @@ import { useRef, useState } from 'react';
 
 type Props = {
   enabled: boolean;
+  loginSupported: boolean;
   credentialsPresent: boolean;
   onLoggedIn: () => Promise<void>;
 };
 
-export function CampusLogin({ enabled, credentialsPresent, onLoggedIn }: Props) {
+export function CampusLogin({ enabled, loginSupported, credentialsPresent, onLoggedIn }: Props) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -15,7 +16,7 @@ export function CampusLogin({ enabled, credentialsPresent, onLoggedIn }: Props) 
 
   async function login(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current) return;
+    if (submitting.current || !enabled || !loginSupported) return;
     const form = event.currentTarget;
     const data = new FormData(form);
     const email = String(data.get('email') || '').trim();
@@ -32,7 +33,13 @@ export function CampusLogin({ enabled, credentialsPresent, onLoggedIn }: Props) 
         body: JSON.stringify({ email, password }),
         signal: AbortSignal.timeout(100_000), cache: 'no-store',
       });
-      const result = await response.json();
+      if (response.status === 404) {
+        throw new Error('当前后端没有树洞登录接口，请重启项目的前后端服务，再点击“重新检查”。');
+      }
+      const result = await response.json().catch(() => null);
+      if (!result) {
+        throw new Error('登录服务未返回有效响应，请确认后端服务已启动且前端连接到正确端口。');
+      }
       if (!response.ok || result.authenticated !== true) {
         throw new Error(result.error?.message || '登录失败，请稍后重试。');
       }
@@ -53,18 +60,19 @@ export function CampusLogin({ enabled, credentialsPresent, onLoggedIn }: Props) 
     <div className="campus-login">
       <div className="section-heading">
         <p className="help">使用你的树洞账号登录，凭据仅保存在这台电脑。</p>
-        <button className="text-button" type="button" disabled={!enabled || busy}
+        <button className="text-button" type="button" disabled={!enabled || !loginSupported || busy}
           aria-expanded={open} aria-controls="campus-login-form"
           onClick={() => { setOpen(!open); setError(''); setSuccess(''); }}>
           {open ? '收起登录' : credentialsPresent ? '重新登录树洞' : '登录树洞'}
         </button>
       </div>
+      {enabled && !loginSupported && <p className="error" role="alert">当前连接的是旧版后端，尚不支持树洞登录。请重启项目的前后端服务，再点击“重新检查”。这不是账号或密码错误。</p>}
       {open && <form id="campus-login-form" onSubmit={login} autoComplete="off" aria-busy={busy}>
         <p className="help" id="campus-login-help">邮箱和密码将经本机后端发送至树洞认证服务（auth.fduhole.com）。密码不会保存，也不会发送给模型。</p>
         <div className="login-fields">
           <div><label htmlFor="campus-email">树洞邮箱</label><input id="campus-email" name="email" type="email" required maxLength={320} disabled={busy} aria-describedby="campus-login-help" /></div>
           <div><label htmlFor="campus-password">树洞密码</label><input id="campus-password" name="password" type="password" required maxLength={1024} disabled={busy} /></div>
-          <button type="submit" disabled={busy || !enabled}>{busy ? '正在登录…' : '登录并保存凭据'}</button>
+          <button type="submit" disabled={busy || !enabled || !loginSupported}>{busy ? '正在登录…' : '登录并保存凭据'}</button>
         </div>
       </form>}
       {error && <p className="error" role="alert">{error}</p>}

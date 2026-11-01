@@ -6,6 +6,7 @@ import { CampusLogin } from './CampusLogin';
 
 type Health = {
   status: string;
+  stage: number;
   model: { name: string; configured: boolean; available: boolean };
   search: { provider: string; configured: boolean; is_mock: boolean };
   campus: { credentials_present: boolean; available: boolean };
@@ -74,7 +75,7 @@ function App() {
             <div><dt>网页搜索</dt><dd>{health ? health.search.is_mock ? '离线样例' : health.search.configured ? 'Tavily · 已配置，待实际检索' : 'Tavily · 缺少密钥' : '等待后端'}<small>{health?.search.is_mock ? '未访问网络' : '仅使用公开网页'}</small></dd></div>
             <div><dt>树洞检索</dt><dd>接口已实现 · 对话待接入<small>{health?.campus.credentials_present ? '检测到凭据文件，有效性待实际请求验证' : '尚未登录 · 不影响网页对话'}</small></dd></div>
           </dl>
-          <CampusLogin enabled={!!health} credentialsPresent={!!health?.campus.credentials_present} onLoggedIn={checkHealth} />
+          <CampusLogin enabled={!!health} loginSupported={(health?.stage ?? 0) >= 3} credentialsPresent={!!health?.campus.credentials_present} onLoggedIn={checkHealth} />
         </section>
         <Chat enabled={!!health?.model.configured} isMock={!!health?.search.is_mock} />
         <section className="search-section" aria-labelledby="search-title">
