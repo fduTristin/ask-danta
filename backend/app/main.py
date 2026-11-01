@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import asyncio
 import json
 from uuid import UUID
 
@@ -11,6 +12,8 @@ from .config import Settings
 from .search import SearchError, SearchRequest, SearchResponse, SearchService
 from .model import ModelError, ModelService
 from .agent import Agent, ChatRequest, Session
+from .campus import CampusService, CampusPage, CampusSearchRequest, CampusThreadRequest
+from .campus_auth import CampusError
 
 
 def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
@@ -20,18 +23,20 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
     async def lifespan(app: FastAPI):
         async with httpx.AsyncClient(
             timeout=settings.http_timeout_seconds, transport=transport,
-            follow_redirects=False,
+            follow_redirects=False, trust_env=False,
         ) as client:
             app.state.search = SearchService(settings, client)
+            app.state.campus = CampusService(settings, client)
             app.state.agent = Agent(settings, ModelService(settings, client), app.state.search)
             app.state.sessions = {}
             yield
             app.state.sessions.clear()
 
-    app = FastAPI(title="Campus Agent", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="Campus Agent", version="0.3.0", lifespan=lifespan)
 
     @app.exception_handler(SearchError)
     @app.exception_handler(ModelError)
+    @app.exception_handler(CampusError)
     async def search_error_handler(request: Request, exc: SearchError):
         # Never forward upstream responses, request headers, or credentials.
         return JSONResponse(status_code=exc.status, content={"error": {"code": exc.code, "message": exc.message}})
@@ -39,7 +44,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
     @app.get("/api/health")
     async def health():
         return {
-            "status": "ok", "stage": 2,
+            "status": "ok", "stage": 3,
             "model": {
                 "name": settings.model_name,
                 "configured": bool(settings.model_api_key.get_secret_value()),
@@ -68,6 +73,21 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
     @app.post("/api/search", response_model=SearchResponse)
     async def search(body: SearchRequest, request: Request):
         return await request.app.state.search.search(body.query)
+
+    @app.post("/api/campus/search", response_model=CampusPage)
+    async def campus_search(body: CampusSearchRequest, request: Request):
+        return await campus_within_budget(request.app.state.campus.search_campus_posts(**body.model_dump()))
+
+    @app.post("/api/campus/thread", response_model=CampusPage)
+    async def campus_thread(body: CampusThreadRequest, request: Request):
+        return await campus_within_budget(request.app.state.campus.read_campus_thread(**body.model_dump()))
+
+    async def campus_within_budget(operation):
+        try:
+            async with asyncio.timeout(settings.request_budget_seconds):
+                return await operation
+        except TimeoutError:
+            raise CampusError("campus_request_budget_exhausted", "树洞请求已达到总时长预算。", 504) from None
 
     def get_session(session_id: UUID) -> Session:
         session = app.state.sessions.get(str(session_id))
