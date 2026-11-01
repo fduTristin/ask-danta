@@ -149,11 +149,14 @@ class CampusService:
             raise CampusError("campus_invalid_response", "树洞响应格式发生变化，无法安全读取。") from None
 
     async def login(self, email: str, password: str) -> None:
-        response = await self._request("POST", AUTH_BASE + "/login", json={"email": email, "password": password})
-        self._check(response)
-        tokens = self._parse(response, Tokens)
-        self.store.save(tokens)
-        self._invalid_access = None
+        async with self._refresh_lock:
+            response = await self._request("POST", AUTH_BASE + "/login", json={"email": email, "password": password})
+            if response.status_code in (400, 401, 403):
+                raise CampusError("campus_login_failed", "树洞登录失败，请检查邮箱、密码及账号状态后重试。", 401)
+            self._check(response)
+            tokens = self._parse(response, Tokens)
+            self.store.save(tokens)
+            self._invalid_access = None
 
     async def _get(self, path: str, params: dict | None = None) -> httpx.Response:
         tokens = self.store.load()

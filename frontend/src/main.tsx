@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './style.css';
 import { Chat } from './Chat';
+import { CampusLogin } from './CampusLogin';
 
 type Health = {
   status: string;
@@ -58,8 +59,8 @@ function App() {
       <aside>
         <a className="brand" href="/">校内信息<br /><strong>研究助手</strong></a>
         <p className="intro">从正式通知到校园经验，<br />让每一条建议有据可查。</p>
-        <div className="stage"><span>当前进度</span><h2>对话和网页工具</h2><p>第二步 / 共六步</p></div>
-        <p className="scope">通过多轮对话明确问题，按需检索公开网页并保留来源。树洞检索尚未开放。</p>
+        <div className="stage"><span>当前进度</span><h2>树洞接口与独立登录</h2><p>第三步 / 共六步</p></div>
+        <p className="scope">通过多轮对话明确问题，按需检索公开网页并保留来源。树洞接口已实现，对话接入将在第四步开放。</p>
         <footer>Campus Agent<br />本机开发环境</footer>
       </aside>
       <main>
@@ -71,8 +72,9 @@ function App() {
             <div><dt>后端服务</dt><dd><span className={`dot ${health ? 'ready' : ''}`} />{health ? '已连接' : checking ? '连接中' : '未连接'}</dd></div>
             <div><dt>DeepSeek 模型</dt><dd>{health?.model.configured ? '已配置 · 可发起对话' : '待配置'}<small>{health?.model.name || 'DeepSeek'} · 状态检查不验证密钥</small></dd></div>
             <div><dt>网页搜索</dt><dd>{health ? health.search.is_mock ? '离线样例' : health.search.configured ? 'Tavily · 已配置，待实际检索' : 'Tavily · 缺少密钥' : '等待后端'}<small>{health?.search.is_mock ? '未访问网络' : '仅使用公开网页'}</small></dd></div>
-            <div><dt>树洞检索</dt><dd>尚未接入<small>{health?.campus.credentials_present ? '检测到凭据文件，尚未验证' : '不影响当前启动'}</small></dd></div>
+            <div><dt>树洞检索</dt><dd>接口已实现 · 对话待接入<small>{health?.campus.credentials_present ? '检测到凭据文件，有效性待实际请求验证' : '尚未登录 · 不影响网页对话'}</small></dd></div>
           </dl>
+          <CampusLogin enabled={!!health} credentialsPresent={!!health?.campus.credentials_present} onLoggedIn={checkHealth} />
         </section>
         <Chat enabled={!!health?.model.configured} isMock={!!health?.search.is_mock} />
         <section className="search-section" aria-labelledby="search-title">

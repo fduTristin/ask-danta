@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, field_validator
 
 
 class CampusError(Exception):
@@ -29,6 +29,17 @@ class Tokens(BaseModel):
         return value
 
 
+class CampusLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    email: str = Field(min_length=3, max_length=320, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+    password: SecretStr = Field(min_length=1, max_length=1024)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def trim_email(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
 def restrict_file(path: Path) -> None:
     """Set owner-only access before writing secrets, including on Windows."""
     if os.name != "nt":
@@ -38,7 +49,6 @@ def restrict_file(path: Path) -> None:
 $ErrorActionPreference = 'Stop'
 $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
 $acl = New-Object System.Security.AccessControl.FileSecurity
-$acl.SetOwner($identity)
 $acl.SetAccessRuleProtection($true, $false)
 $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($identity, 'FullControl', 'Allow')
 $acl.AddAccessRule($rule)

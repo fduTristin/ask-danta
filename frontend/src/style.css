@@ -33,6 +33,14 @@ dd { margin: 0; font-size: 14px; }
 dd small { display: block; font-size: 12px; color: #586d73; margin-top: 3px; }
 .dot { display: inline-block; height: 7px; width: 7px; border-radius: 50%; background: #88989c; margin-right: 8px; }
 .dot.ready { background: #2c7a61; }
+.campus-login { margin: -16px 0 32px; border-bottom: 1px solid #dbe4e7; padding-bottom: 20px; }
+.campus-login .section-heading { align-items: baseline; }
+.campus-login .section-heading .help { margin: 0; }
+.campus-login .text-button { flex-shrink: 0; }
+.campus-login form { margin-top: 12px; }
+.login-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.login-fields input { width: 100%; }
+.login-success { color: #246247; background: #e7f3ec; border-radius: 6px; padding: 12px 16px; font-size: 14px; }
 .search-section { padding-top: 4px; }
 .chat-section { border-bottom: 1px solid #dbe4e7; padding-bottom: 30px; margin-bottom: 28px; }
 .session-actions { display: flex; flex-wrap: wrap; }
@@ -80,4 +88,6 @@ article p { margin: 8px 0; font-size: 14px; }
   main { padding: 28px 22px; } header { margin-bottom: 26px; }
   .local { display: none; } .status-list { padding: 4px 16px; gap: 0 16px; }
   .search-bar { flex-direction: column; } .source-meta { flex-wrap: wrap; }
+  .login-fields { grid-template-columns: 1fr; }
+  .campus-login .section-heading { align-items: start; }
 }

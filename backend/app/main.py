@@ -5,6 +5,8 @@ from uuid import UUID
 
 import httpx
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
@@ -13,7 +15,7 @@ from .search import SearchError, SearchRequest, SearchResponse, SearchService
 from .model import ModelError, ModelService
 from .agent import Agent, ChatRequest, Session
 from .campus import CampusService, CampusPage, CampusSearchRequest, CampusThreadRequest
-from .campus_auth import CampusError
+from .campus_auth import CampusError, CampusLoginRequest
 
 
 def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
@@ -40,6 +42,16 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
     async def search_error_handler(request: Request, exc: SearchError):
         # Never forward upstream responses, request headers, or credentials.
         return JSONResponse(status_code=exc.status, content={"error": {"code": exc.code, "message": exc.message}})
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(request: Request, exc: RequestValidationError):
+        if request.url.path == "/api/campus/login":
+            # FastAPI's default validation errors may include raw request input,
+            # including the whole body for malformed JSON. Never echo login data.
+            return JSONResponse(status_code=422, content={"error": {
+                "code": "campus_invalid_login", "message": "请输入有效邮箱和非空密码。",
+            }}, headers={"Cache-Control": "no-store"})
+        return await request_validation_exception_handler(request, exc)
 
     @app.get("/api/health")
     async def health():
@@ -77,6 +89,12 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
     @app.post("/api/campus/search", response_model=CampusPage)
     async def campus_search(body: CampusSearchRequest, request: Request):
         return await campus_within_budget(request.app.state.campus.search_campus_posts(**body.model_dump()))
+
+    @app.post("/api/campus/login")
+    async def campus_login(body: CampusLoginRequest, request: Request):
+        await campus_within_budget(request.app.state.campus.login(body.email, body.password.get_secret_value()))
+        return JSONResponse(content={"authenticated": True, "message": "登录成功，凭据已保存在本机。"},
+                            headers={"Cache-Control": "no-store"})
 
     @app.post("/api/campus/thread", response_model=CampusPage)
     async def campus_thread(body: CampusThreadRequest, request: Request):

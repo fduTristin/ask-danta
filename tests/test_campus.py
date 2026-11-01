@@ -379,3 +379,52 @@ def test_invalid_json_and_auth_response_are_sanitized(tmp_path):
         run_service(config, lambda r: httpx.Response(200, json={"access": "secret"}), lambda s: s.login("test", "test"))
     assert exc.value.code == "campus_invalid_response" and "secret" not in str(exc.value)
     assert TokenStore(config.auth_path).load().access.get_secret_value() == "old-access"
+
+
+def test_web_login_saves_tokens_without_exposing_secrets_or_chat_history(tmp_path):
+    config = settings(tmp_path)
+    def handler(request):
+        assert request.url == AUTH_BASE + "/login"
+        assert json.loads(request.content) == {"email": "synthetic@example.invalid", "password": " password-with-spaces "}
+        return httpx.Response(200, json={"access": "synthetic-access", "refresh": "synthetic-refresh"})
+    with TestClient(create_app(config, httpx.MockTransport(handler))) as client:
+        session = client.post("/api/sessions").json()["session_id"]
+        response = client.post("/api/campus/login", json={"email": " synthetic@example.invalid ", "password": " password-with-spaces "})
+        assert response.status_code == 200 and response.json()["authenticated"] is True
+        assert response.headers["Cache-Control"] == "no-store"
+        assert client.get("/api/health").json()["campus"]["credentials_present"] is True
+        assert client.get(f"/api/sessions/{session}").json()["messages"] == []
+        for secret in ("synthetic-access", "synthetic-refresh", "password-with-spaces", "synthetic@example.invalid"):
+            assert secret not in response.text
+        assert "password" not in config.auth_path.read_text()
+
+
+@pytest.mark.parametrize("body", [
+    {"email": "private-email", "password": "private-password"},
+    {"email": "synthetic@example.invalid", "password": ""},
+    {"email": "synthetic@example.invalid", "password": "private-password", "extra": "private-value"},
+    {"email": "synthetic@example.invalid", "password": {"private-password": "bad-type"}},
+])
+def test_web_login_validation_never_echoes_input(tmp_path, body):
+    with TestClient(create_app(settings(tmp_path), httpx.MockTransport(lambda r: pytest.fail("network")))) as client:
+        response = client.post("/api/campus/login", json=body)
+        assert response.status_code == 422 and response.json()["error"]["code"] == "campus_invalid_login"
+        assert "private" not in response.text and "synthetic" not in response.text
+
+
+def test_web_login_malformed_json_never_echoes_body(tmp_path):
+    with TestClient(create_app(settings(tmp_path), httpx.MockTransport(lambda r: pytest.fail("network")))) as client:
+        response = client.post("/api/campus/login", content='{"password":"private-password", BROKEN',
+                               headers={"Content-Type": "application/json"})
+        assert response.status_code == 422 and "private-password" not in response.text
+
+
+@pytest.mark.parametrize("status", [400, 401, 403])
+def test_web_login_failure_keeps_existing_credentials_and_redacts(tmp_path, status):
+    config = settings(tmp_path)
+    seed(config)
+    with TestClient(create_app(config, httpx.MockTransport(lambda r: httpx.Response(status, text="private-password")))) as client:
+        response = client.post("/api/campus/login", json={"email": "synthetic@example.invalid", "password": "private-password"})
+        assert response.status_code == 401 and response.json()["error"]["code"] == "campus_login_failed"
+        assert "private-password" not in response.text
+    assert TokenStore(config.auth_path).load().access.get_secret_value() == "old-access"
