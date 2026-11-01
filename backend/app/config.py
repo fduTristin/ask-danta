@@ -16,8 +16,14 @@ class Settings(BaseSettings):
     model_base_url: HttpUrl = "https://api.deepseek.com"
     model_name: str = Field(default="deepseek-flash", min_length=1, max_length=200)
     model_api_key: SecretStr = SecretStr("")
+    model_thinking: Literal["enabled", "disabled"] = "disabled"
+    model_reasoning_effort: Literal["low", "high", "max"] = "low"
+    model_max_tokens: int = Field(default=4096, ge=256, le=32768)
+    model_timeout_seconds: float = Field(default=45, gt=0, le=300)
+    search_timeout_seconds: float | None = Field(default=None, gt=0, le=120)
     search_provider: Literal["mock", "tavily"] = "mock"
     search_api_key: SecretStr = SecretStr("")
+    search_depth: Literal["basic", "advanced"] = "basic"
     search_max_results: int = Field(default=5, ge=1, le=10)
     search_max_snippet_chars: int = Field(default=2000, ge=100, le=10000)
     campus_auth_file: Path = Path(".private/campus-tokens.json")
@@ -47,3 +53,7 @@ class Settings(BaseSettings):
     @property
     def search_configured(self) -> bool:
         return self.search_provider == "mock" or bool(self.search_api_key.get_secret_value())
+
+    @property
+    def search_timeout(self) -> float:
+        return self.search_timeout_seconds or self.http_timeout_seconds
