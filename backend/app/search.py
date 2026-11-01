@@ -70,16 +70,17 @@ class SearchService:
             raise SearchError("search_not_configured", "请在项目根目录 .env 中填写 SEARCH_API_KEY 并重启服务。", 503)
         try:
             # An overall deadline also bounds a server that slowly streams bytes.
-            async with asyncio.timeout(self.settings.http_timeout_seconds):
+            async with asyncio.timeout(self.settings.search_timeout):
                 response = await self.client.post(
                     "https://api.tavily.com/search",
                     headers={"Authorization": f"Bearer {self.settings.search_api_key.get_secret_value()}"},
                     json={
-                        "query": query, "search_depth": "basic", "topic": "general",
+                        "query": query, "search_depth": self.settings.search_depth, "topic": "general",
                         "max_results": self.settings.search_max_results,
                         "include_answer": False, "include_raw_content": False,
                         "include_published_date": True,
                     },
+                    timeout=self.settings.search_timeout,
                 )
             response.raise_for_status()
             payload = TavilyPayload.model_validate(response.json())
