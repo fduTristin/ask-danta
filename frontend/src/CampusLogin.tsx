@@ -45,7 +45,7 @@ export function CampusLogin({ enabled, loginSupported, credentialsPresent, onLog
       }
       form.reset();
       setOpen(false);
-      setSuccess('登录成功，凭据已保存在本机。树洞对话功能将在第四步开放。');
+      setSuccess('登录成功，凭据已保存在本机。对话可选择“公开网页 + 树洞”来搜索和读取帖子。');
       await onLoggedIn();
     } catch (cause) {
       setError(cause instanceof Error && cause.name === 'Error'

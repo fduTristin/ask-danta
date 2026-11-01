@@ -9,7 +9,7 @@ type Health = {
   stage: number;
   model: { name: string; configured: boolean; available: boolean };
   search: { provider: string; configured: boolean; is_mock: boolean };
-  campus: { credentials_present: boolean; available: boolean };
+  campus: { credentials_present: boolean; available: boolean; tools_enabled?: boolean; auth_state?: string };
 };
 type SearchResponse = {
   query: string; provider: string; is_mock: boolean; notice: string;
@@ -60,8 +60,8 @@ function App() {
       <aside>
         <a className="brand" href="/">校内信息<br /><strong>研究助手</strong></a>
         <p className="intro">从正式通知到校园经验，<br />让每一条建议有据可查。</p>
-        <div className="stage"><span>当前进度</span><h2>树洞接口与独立登录</h2><p>第三步 / 共六步</p></div>
-        <p className="scope">通过多轮对话明确问题，按需检索公开网页并保留来源。树洞接口已实现，对话接入将在第四步开放。</p>
+        <div className="stage"><span>当前进度</span><h2>跨来源校园调研</h2><p>第四步 / 共六步</p></div>
+        <p className="scope">对照官方网页与校园经验，按需读取帖子上下文，为回答保留可核对的来源。</p>
         <footer>Campus Agent<br />本机开发环境</footer>
       </aside>
       <main>
@@ -73,11 +73,11 @@ function App() {
             <div><dt>后端服务</dt><dd><span className={`dot ${health ? 'ready' : ''}`} />{health ? '已连接' : checking ? '连接中' : '未连接'}</dd></div>
             <div><dt>DeepSeek 模型</dt><dd>{health?.model.configured ? '已配置 · 可发起对话' : '待配置'}<small>{health?.model.name || 'DeepSeek'} · 状态检查不验证密钥</small></dd></div>
             <div><dt>网页搜索</dt><dd>{health ? health.search.is_mock ? '离线样例' : health.search.configured ? 'Tavily · 已配置，待实际检索' : 'Tavily · 缺少密钥' : '等待后端'}<small>{health?.search.is_mock ? '未访问网络' : '仅使用公开网页'}</small></dd></div>
-            <div><dt>树洞检索</dt><dd>接口已实现 · 对话待接入<small>{health?.campus.credentials_present ? '检测到凭据文件，有效性待实际请求验证' : '尚未登录 · 不影响网页对话'}</small></dd></div>
+            <div><dt>树洞检索</dt><dd>{health?.campus.tools_enabled ? '可在对话中使用' : health?.stage && health.stage < 4 ? '请重启后端以启用对话工具' : '请登录后使用'}<small>{health?.campus.auth_state === 'expired' || health?.campus.auth_state === 'invalid' ? '凭据失效，请重新登录' : health?.campus.credentials_present ? '已配置凭据，远端权限以实际请求为准' : '尚未登录 · 不影响网页对话'}</small></dd></div>
           </dl>
           <CampusLogin enabled={!!health} loginSupported={(health?.stage ?? 0) >= 3} credentialsPresent={!!health?.campus.credentials_present} onLoggedIn={checkHealth} />
         </section>
-        <Chat enabled={!!health?.model.configured} isMock={!!health?.search.is_mock} />
+        <Chat enabled={!!health?.model.configured && (health?.stage ?? 0) >= 4} isMock={!!health?.search.is_mock} campusReady={!!health?.campus.tools_enabled} onAuthChange={checkHealth} />
         <section className="search-section" aria-labelledby="search-title">
           <div className="section-heading"><h2 id="search-title">试一次网页搜索</h2><span className="tag">{health ? health.search.is_mock ? '样例模式' : 'Tavily' : '等待连接'}</span></div>
           <p className="help">输入关键词，检查搜索结果和来源展示。</p>
