@@ -1,7 +1,7 @@
 # 校内信息研究助手 · Campus Agent
 
 面向本机单用户的校园信息调研应用，采用 React + TypeScript + Vite、FastAPI + HTTPX。
-已完成 [开发计划](plan.md) 的**第一步、第二步及其基础回答质量补充**：配置与本地启动、DeepSeek 多轮对话、有预算的搜索/网页读取循环、回答核对与来源展示。固定案例和真实服务结果见 [质量验收记录](docs/quality-evaluation.md)。树洞登录和 Skill 加载尚未实现。
+已完成 [开发计划](plan.md) 的**第一步、第二步及其基础回答质量补充，以及第三步的代码与模拟验证**：配置与本地启动、DeepSeek 多轮对话、有预算的搜索/网页读取循环、回答核对、独立树洞登录与只读 API。第三步真实账号联调待本地登录；树洞接入对话、数据源开关和 Skill 加载属于第四步，尚未实现。固定案例和网页/模型真实服务结果见 [质量验收记录](docs/quality-evaluation.md)。
 
 ## 快速启动
 
@@ -47,10 +47,11 @@ python scripts/dev.py
 | `SEARCH_MAX_SNIPPET_CHARS` | `2000` | 每条摘要最多 100–10000 个字符，截断有标记 |
 | `SEARCH_DEPTH` | `advanced` | Tavily `basic` / `advanced`；深入搜索可能消耗更多额度 |
 | `SEARCH_TIMEOUT_SECONDS` | 未单独设置 | 搜索及网页读取超时；未设置时沿用 `HTTP_TIMEOUT_SECONDS` |
-| `CAMPUS_AUTH_FILE` | `.private/campus-tokens.json` | 为第三步预留；当前只检测文件是否存在，不读取内容 |
-| `HTTP_TIMEOUT_SECONDS` | `15` | 兼容原配置，作为搜索/网页读取的默认超时；模型使用独立配置 |
+| `CAMPUS_AUTH_FILE` | `.private/campus-tokens.json` | 本项目独立登录保存的 token 对；健康检查仅检测文件存在，树洞请求才读取 |
+| `CAMPUS_MAX_CONTENT_CHARS` | `4000` | 每条树洞正文最多 100–12000 字符，截断有标记 |
+| `HTTP_TIMEOUT_SECONDS` | `15` | 树洞 HTTP 超时及搜索/网页读取的默认超时；模型使用独立配置 |
 | `MAX_TOOL_CALLS` | `6` | 每轮用户请求最多尝试的工具调用数；无效参数和未知工具也计数 |
-| `MAX_CAMPUS_PAGES` | `3` | 第三步校内检索分页预算，当前仅配置 |
+| `MAX_CAMPUS_PAGES` | `3` | 同一树洞工作流共享的分页尝试预算；独立 HTTP 入口一次读取一页 |
 | `REQUEST_BUDGET_SECONDS` | `90` | 单轮 Agent 总时长，包含检索与最终回答 |
 | `BACKEND_PORT` | `8000` | 后端端口，1024–65535 |
 | `FRONTEND_PORT` | `5173` | 前端端口，1024–65535，须与后端不同 |
@@ -77,7 +78,7 @@ API 使用 [Tavily 官方 Search 接口](https://docs.tavily.com/documentation/a
 
 ## API 契约
 
-`GET /api/health` 返回 `stage=2`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 保持 `false`（健康检查不验证远端可用性），`campus.available` 为 `false`（尚未接入）。
+`GET /api/health` 返回 `stage=3`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 与 `campus.available` 保持 `false`（健康检查不验证远端可用性）；`campus.credentials_present` 仅表示文件存在，不代表已认证。
 
 `POST /api/search` 保留为独立搜索验证入口；同一搜索适配器已注册为 Agent 的 `search_web(query)` 工具。请求：
 
@@ -136,13 +137,62 @@ API 使用 [Tavily 官方 Search 接口](https://docs.tavily.com/documentation/a
 
 工具按白名单执行，参数经 Pydantic 校验，结果按模型返回的 `tool_call_id` 回填。并列调用也按顺序执行，超过预算的调用回填明确错误。同一轮重复的工具名和参数（忽略大小写及多余空白）不会再次请求上游，但占用一次尝试；相似含义的不同关键词仍由模型判断。网页内容是不可信资料，不能授予工具权限；目前没有任意 URL 读取或社区写操作工具。
 
-默认模型请求 45 秒、搜索/读取 15 秒，每轮最多 6 次工具尝试、总计 90 秒。为最终回答预留 `min(MODEL_TIMEOUT_SECONDS, REQUEST_BUDGET_SECONDS / 3)` 秒（默认 30 秒）；检索阶段达到截止时间或工具上限后，移除工具并要求模型基于已有资料说明缺口。最终模型调用和核对均受总时长约束；模型失败或总时长耗尽时，应用返回**明确标注未完成核对的已取回摘要**，不会伪装成完整研究结论。`MAX_CAMPUS_PAGES=3` 供第三步使用，当前没有校内检索工具。
+默认模型请求 45 秒、搜索/读取 15 秒，每轮最多 6 次工具尝试、总计 90 秒。为最终回答预留 `min(MODEL_TIMEOUT_SECONDS, REQUEST_BUDGET_SECONDS / 3)` 秒（默认 30 秒）；检索阶段达到截止时间或工具上限后，移除工具并要求模型基于已有资料说明缺口。最终模型调用和核对均受总时长约束；模型失败或总时长耗尽时，应用返回**明确标注未完成核对的已取回摘要**，不会伪装成完整研究结论。`MAX_CAMPUS_PAGES=3` 已用于第三步树洞客户端工作流，当前对话尚未注册树洞工具。
 
 当前工作流：普通聊天或条件确认直接回答；需要查证时检索，结果无关或证据不足时改词补查；摘要缺少关键事实可读取已命中页面；有检索资料或引用的候选答案进行额外模型核对，必要时继续补查。如果核对触发了补查，最终稿再核对一次，此时禁止继续开启工具，最多两次核对均计入原总时长。不存在的来源编号和 mock 引用会被程序拒绝；引用是否真正支持结论仍依赖模型核对与质量评测，不是自动证明。
 
 `read_web(source_id)` 只接受本会话已检索到的来源编号，如 `W1`。每次 DNS 解析和每一次重定向都要求地址为公开 HTTP(S)、标准端口且不含认证信息；拒绝本机、内网、保留地址、混合公私地址与 IPv4 映射地址。连接固定到通过校验的 IP，保持原 Host/TLS SNI，禁用环境代理，最多 3 次跳转。读取不携带模型/搜索密钥或浏览器凭据，只接受 HTML/纯文本，最多 1 MB 内容、12000 字符并标注截断。暂不支持 PDF、登录页面或依赖 JavaScript 的页面；HTML 提取可能仍带部分导航，不能宣称完整阅读所有正文。
 
 会话只保存在单进程内存中，重启后丢失，不支持多 worker 或多用户部署。页面将当前会话 ID 放入 `sessionStorage`，刷新可恢复已完成消息；新建会话使用独立 ID，不读取旧历史。新建不会删除旧会话，删除接口或服务重启可释放旧会话。停止或断开连接会取消正在进行的上游请求并释放会话占用；尚未完成的整轮不写入历史。已发送的上游请求仍可能产生费用。当前未做长对话压缩或持久化。
+
+## 树洞网页登录、独立脚本与只读接口（第三步）
+
+**网页登录**：启动应用后，在“服务状态”下点击“登录树洞”，输入邮箱和密码，再点击“登录并保存凭据”。已有凭据时按钮显示“重新登录树洞”。浏览器只向本机的 `POST /api/campus/login` 提交账号密码，由后端调用固定的树洞认证服务；token 仅保存在后端配置的本地文件，响应不包含邮箱、密码或 token。密码框在提交时立即清空，成功后收起表单并刷新凭据状态；应用不把密码写入浏览器存储或会话历史，也不发送给模型。登录失败不覆盖原有凭据，错误提示不会回显输入，即使 JSON 格式错误也会脱敏。
+
+网页登录只完成认证和本地凭据保存。树洞接入对话仍在第四步；真实账号登录成功后，可以继续运行下方检查脚本验证搜索与详情。
+
+从项目根目录运行，不需要启动后端，也不需要安装 Rust 或 `danta-cli`：
+
+```powershell
+uv run --frozen python scripts/campus_login.py
+uv run --frozen python scripts/check_campus.py --query "图书馆"
+```
+
+登录脚本交互读取邮箱与隐藏密码，只发送到固定的 `https://auth.fduhole.com/api/login`。密码不写入文件、不放入命令参数；不能隐藏密码的终端会拒绝继续。仅将返回的 `access` / `refresh` 保存到 `CAMPUS_AUTH_FILE`：先给临时文件设置当前用户权限（Windows 专用 ACL，POSIX `0600`），再写入并原子替换；权限设置失败则不保存。默认 `.private/` 已被 Git 忽略，若自定义路径，也必须自行确保不会进入版本控制或提交包。
+
+`check_campus.py` 使用真实账号直接搜索、读取命中的帖子元数据与楼层，有下一页且预算允许时再检查分页。脚本只输出数量、洞号和状态，不打印正文、邮箱或 token；无结果或无法读取楼层不算联调通过。它默认读取最多 3 页、每页 20 条，且受 90 秒总预算约束。当前仓库的检查记录没有有效凭据，真实联调尚未执行；不要把下面的合成示例当作服务返回记录。
+
+应用只允许五类固定上游接口：登录、刷新、楼层搜索、帖子元数据和帖子楼层。全部业务读取都使用 GET 和 HTTPX 参数编码，不提供任意 URL、发帖、点赞、私信或用户信息接口，不读取任何 CLI 配置。禁用重定向和环境代理。后端提供一个网页登录入口和两个独立读取入口，尚未发送树洞内容给模型：
+
+| 本地接口 | JSON 请求示例 | 行为 |
+| --- | --- | --- |
+| `POST /api/campus/login` | `{"email":"synthetic@example.invalid","password":"仅为结构示例"}` | 请求认证接口并安全保存 token；响应仅含成功状态和提示 |
+| `POST /api/campus/search` | `{"query":"图书馆","offset":0,"limit":20}` | 请求 `/api/floors/search`，返回一页楼层 |
+| `POST /api/campus/thread` | `{"hole_id":12,"offset":0,"limit":20}` | 先请求 `/api/holes/12` 元数据，再请求 `/api/holes/12/floors` |
+
+关键词去除首尾空白，长度 1–500；洞号为正整数，偏移非负，条数默认 20、范围 1–50。拒绝多余参数、字符串形式的数字及布尔值。详情的元数据与楼层必须属于请求的洞号；无效输入返回 `422`，上游格式不符返回 `502 campus_invalid_response`，不会伪装成空结果。
+
+返回 `results` 中仅含 `source=campus`、`hole_id`、`floor_id`、`content`、`time_created`、可空的 `time_updated`、`truncated` 和 `redacted`。剔除匿名昵称、用户标识、投票、嵌套引用等字段及已删除楼层；正文做邮箱和大陆手机号的基础替换，再按配置截断。这不是完整匿名化，仍需把帖子内容当作可能含个人信息的不可信资料。日期必须来自上游且可解析，缺少可选日期时不补造。没有来源 URL，不拼接未经验证的深层链接。详情另含白名单帖子元数据 `thread`，搜索时为 `null`。
+
+分页附 `offset`、`limit`、去重前的 `raw_count`、`next_offset`、`has_more=null`、`complete=false`。满页才提供下一页候选偏移，按原始条数推进；短页和空页停止自动翻页，但服务端普通数组没有总数或明确结束标记，因此不宣称完整遍历。独立 HTTP 请求各读一页，不跨请求保存去重状态；需要多页时，应用内部必须在同一工作流传入共享 `CampusBudget(settings.max_campus_pages)`。相同查询或帖子跨页按洞号/楼层 ID 去重，搜索后读取详情仍保留上下文。失败的分页尝试也占页数，元数据请求、刷新和重试不额外算页。第四步注册工具时需把这一预算与 Agent 的调用次数、时间预算一起执行。
+
+access token 被上游以 `401` 拒绝后，用 refresh token 请求 `POST /api/refresh`，原子保存新的 token 对，再重试原业务请求一次。一个服务实例使用共享刷新锁，等待者重读文件以复用新 token。刷新认证失败或新 access token 仍被拒绝时，明确要求重新登录，同一失效凭据不会反复刷新；登录脚本写入新凭据后，后端下一次请求会重新读取，不必重启。此机制只支持当前单进程服务；不要同时运行多个服务实例、登录和独立检查脚本竞争同一 token 文件。
+
+业务 GET 对网络错误、超时和 `429/502/503/504` 最多重试一次，间隔 1 秒；`Retry-After` 超过 1 秒或为日期时直接报告失败，不提前重试。认证 POST 不自动重试，避免 token 轮换或登录被重复提交。未知上游状态、响应正文、异常细节及凭据都不会透传。
+
+| 错误码 | 含义 |
+| --- | --- |
+| `campus_invalid_login` / `campus_login_failed` | 登录输入无效 / 邮箱、密码或账号状态未通过认证 |
+| `campus_login_required` / `campus_credentials_invalid` | 未登录或本地凭据不可读/无效 |
+| `campus_credentials_write_failed` | 无法安全保存凭据，需要检查权限并重新登录 |
+| `campus_auth_failed` | 认证失效，需要重新登录 |
+| `campus_forbidden` / `campus_not_found` | 无权限 / 帖子或资源不存在 |
+| `campus_rate_limited` | 上游限流 |
+| `campus_timeout` / `campus_unreachable` | HTTP 超时 / 网络不可达 |
+| `campus_invalid_response` / `campus_upstream_error` | 响应契约变化 / 异常 HTTP 状态 |
+| `campus_page_budget_exhausted` / `campus_request_budget_exhausted` | 工作流页数预算 / 总时长预算耗尽 |
+
+上述失败不影响已允许的公开网页服务，也不会被当作“没有帖子”。当前页面提供第三步状态与网页登录；跨来源对话、树洞来源卡片、数据源选择与 Skill 均在第四步实现。
 
 ## 验证
 
@@ -184,21 +234,23 @@ uv run --frozen python scripts/evaluate_quality.py --label thinking-check --thin
 - **检索质量观察**：真实返回同时包含较旧资料、校外转载和其他学校页面。关键词中的 `site:` 不应视为应用强制执行的域名过滤；后续 Agent 必须核对实际域名、相关性与时效性，不能直接将所有命中视为有效办事依据。本次只验收搜索接入及展示，不认定办事要求已核实。
 - **DeepSeek + Tavily 真实服务验证（通过）**：2026-11-01 执行 `python scripts/check_chat.py`，`deepseek-flash` 实际调用 `search_web`，Tavily 返回 5 条真实来源（包含 `https://gs.fudan.edu.cn/`），模型按来源编号回答；后续不搜索的追问保留了“江湾”条件。浏览器另做一次真实检索和追问，通过事件流显示结果。浏览器中也在搜索进行时停止请求，未完成轮次未留入历史，随后清空成功。此记录验收调用链，不代表摘要内的所有事实都已人工核实。
 - **第二步补充验证**：固定 10 组案例的基线、失败中间结果和最终逐项记录见质量报告；最终记录包括修复后的定向复测，不代表单次全量通过。真实官网查询、正文读取及条件追问通过；距离题最后一次未查明里程，只通过证据边界检查。浏览器验证核对进度、回答引用与累计来源分组、已读正文标记，390px 窄屏无横向溢出，控制台无错误。
-- **尚未执行的真实服务验证**：树洞接口联调留在第三步。
+- **第三步模拟验证**：108 项测试全部通过（新增 48 项、原有 60 项回归）。覆盖登录与原子凭据保存、Windows 当前用户 ACL、参数编码、分页去重与跨来源上下文、截断及敏感字段过滤、无结果、并发 401 仅刷新一次、失效后重新登录、403/404/429/临时故障/超时/格式变化、端点白名单、总预算与取消清理；网页登录补充成功、失败保留旧凭据、非法参数和错误 JSON 不回显秘密、凭据不进入会话历史等测试。未访问真实树洞服务。
+- **第三步构建与界面验证**：前端类型检查与构建通过，前后端及代理冒烟在临时端口 `8002/5175` 通过（原有 `8000` 服务保持运行）。浏览器使用独立合成认证服务验证登录成功、失败提示、提交后密码清空及状态刷新；390px 窄屏无横向溢出。Windows 在项目 E 盘目录实际验证了仅当前用户访问的凭据写入，避免依赖修改文件所有者的权限。截图保存在 `.private/verification/campus-login-desktop.png` 和 `campus-login-mobile.png`，合成凭据与真实默认凭据隔离。
+- **尚未执行的真实服务验证**：本项目树洞凭据不存在；真实登录、刷新、搜索与详情联调尚未完成。运行上述两个脚本后再补充真实记录。
 
 ## 目录
 
 ```text
 frontend/                 React + TypeScript 工作台
-backend/app/              FastAPI、会话、Agent 循环、模型与网页搜索适配器
+backend/app/              FastAPI、会话、Agent、网页与树洞只读适配器、凭据管理
 skills/campus-research/   Skill 预留目录，第四步实现与加载
 tests/                    隔离真实凭据的模拟测试
-scripts/                  安装、启动与真实搜索/对话验收脚本
+scripts/                  安装、启动、独立树洞登录与真实服务验收脚本
 .env.example              不含真实密钥的配置示例
 pyproject.toml / uv.lock   Python 依赖与锁文件
 ```
 
-后续范围见 [plan.md](plan.md)。树洞独立登录在第三步，Skill 加载、数据源权限与进一步完善产品交互在第四步；第二步已提供可验收的基础对话界面。
+后续范围见 [plan.md](plan.md)。第三步代码和模拟验证已完成，真实账号联调待登录；Skill 加载、树洞 Agent 工具注册、数据源权限与进一步完善产品交互在第四步；第二步已提供可验收的基础对话界面。
 `npm run build` 当前验证静态前端可构建；`vite preview` 不提供后端代理，日常运行请使用上述开发启动入口。
 
 本地 `.env`、`.private/`、依赖、日志与构建目录均由 `.gitignore` 排除。后续提交压缩包时同样需要排除这些目录及 `.git`。

@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-- `backend/app/`: FastAPI application factory (`main.py`), environment settings (`config.py`), and HTTPX search adapter (`search.py`).
+- `backend/app/`: FastAPI application factory (`main.py`), environment settings (`config.py`), web adapters, and read-only campus API/authentication (`campus.py`, `campus_auth.py`).
 - `frontend/src/`: React/TypeScript interface and CSS; keep UI assets here. `frontend/vite.config.ts` configures the `/api` development proxy.
 - `tests/`: backend and adapter tests using synthetic responses.
 - `scripts/`: dependency installation, development server supervision, and live-search checks.
@@ -19,6 +19,8 @@ Use Python 3.11+, uv, and Node.js 22.12+ with npm. Run from the repository root:
 - `npm --prefix frontend run build`: check TypeScript and build frontend assets.
 - `python scripts/dev.py --smoke`: start, verify, and stop both servers; stop existing development servers first.
 - `python scripts/check_search.py`: validate actual Tavily search against a running backend; requires live configuration and consumes service quota.
+- `uv run --frozen python scripts/campus_login.py`: interactive project-owned campus login; passwords must never appear in command arguments or chat.
+- `uv run --frozen python scripts/check_campus.py`: validate campus search and thread contracts directly, without starting the backend; requires project-owned credentials and reads real posts.
 
 ## Coding Style & Naming Conventions
 
