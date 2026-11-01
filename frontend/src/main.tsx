@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './style.css';
+import { Chat } from './Chat';
 
 type Health = {
   status: string;
@@ -57,22 +58,23 @@ function App() {
       <aside>
         <a className="brand" href="/">校内信息<br /><strong>研究助手</strong></a>
         <p className="intro">从正式通知到校园经验，<br />让每一条建议有据可查。</p>
-        <div className="stage"><span>当前进度</span><h2>建立项目与配置</h2><p>第一步 / 共六步</p></div>
-        <p className="scope">当前可以检查服务状态、试用网页搜索。多轮对话将在下一步接入，树洞检索尚未开放。</p>
+        <div className="stage"><span>当前进度</span><h2>对话和网页工具</h2><p>第二步 / 共六步</p></div>
+        <p className="scope">通过多轮对话明确问题，按需检索公开网页并保留来源。树洞检索尚未开放。</p>
         <footer>Campus Agent<br />本机开发环境</footer>
       </aside>
       <main>
-        <header><div><p className="eyebrow">开发工作台</p><h1>先让信息来源就绪。</h1></div><span className="local">仅本机运行</span></header>
+        <header><div><p className="eyebrow">研究工作台</p><h1>带着问题，找到依据。</h1></div><span className="local">仅本机运行</span></header>
         <section aria-labelledby="service-title" className="services">
           <div className="section-heading"><h2 id="service-title">服务状态</h2><button className="text-button" onClick={() => void checkHealth()} disabled={checking}>{checking ? '检查中…' : '重新检查'}</button></div>
           {healthError && <p role="alert" className="error">{healthError}</p>}
           <dl className="status-list">
             <div><dt>后端服务</dt><dd><span className={`dot ${health ? 'ready' : ''}`} />{health ? '已连接' : checking ? '连接中' : '未连接'}</dd></div>
-            <div><dt>DeepSeek 模型</dt><dd>{health?.model.configured ? '已配置 · 待接入对话' : '待配置'}<small>{health?.model.name || 'DeepSeek'}</small></dd></div>
+            <div><dt>DeepSeek 模型</dt><dd>{health?.model.configured ? '已配置 · 可发起对话' : '待配置'}<small>{health?.model.name || 'DeepSeek'} · 状态检查不验证密钥</small></dd></div>
             <div><dt>网页搜索</dt><dd>{health ? health.search.is_mock ? '离线样例' : health.search.configured ? 'Tavily · 已配置，待实际检索' : 'Tavily · 缺少密钥' : '等待后端'}<small>{health?.search.is_mock ? '未访问网络' : '仅使用公开网页'}</small></dd></div>
             <div><dt>树洞检索</dt><dd>尚未接入<small>{health?.campus.credentials_present ? '检测到凭据文件，尚未验证' : '不影响当前启动'}</small></dd></div>
           </dl>
         </section>
+        <Chat enabled={!!health?.model.configured} isMock={!!health?.search.is_mock} />
         <section className="search-section" aria-labelledby="search-title">
           <div className="section-heading"><h2 id="search-title">试一次网页搜索</h2><span className="tag">{health ? health.search.is_mock ? '样例模式' : 'Tavily' : '等待连接'}</span></div>
           <p className="help">输入关键词，检查搜索结果和来源展示。</p>
