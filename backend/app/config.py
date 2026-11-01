@@ -21,9 +21,10 @@ class Settings(BaseSettings):
     model_max_tokens: int = Field(default=4096, ge=256, le=32768)
     model_timeout_seconds: float = Field(default=45, gt=0, le=300)
     search_timeout_seconds: float | None = Field(default=None, gt=0, le=120)
+    answer_review_enabled: bool = True
     search_provider: Literal["mock", "tavily"] = "mock"
     search_api_key: SecretStr = SecretStr("")
-    search_depth: Literal["basic", "advanced"] = "basic"
+    search_depth: Literal["basic", "advanced"] = "advanced"
     search_max_results: int = Field(default=5, ge=1, le=10)
     search_max_snippet_chars: int = Field(default=2000, ge=100, le=10000)
     campus_auth_file: Path = Path(".private/campus-tokens.json")

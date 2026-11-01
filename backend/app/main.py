@@ -47,6 +47,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                 "chat_enabled": bool(settings.model_api_key.get_secret_value()),
                 "thinking": settings.model_thinking,
                 "max_tokens": settings.model_max_tokens,
+                "answer_review_enabled": settings.answer_review_enabled,
             },
             "search": {
                 "provider": settings.search_provider,

@@ -19,7 +19,7 @@ def clean_config(monkeypatch):
 
 
 def settings(**kwargs):
-    return Settings(_env_file=None, model_api_key="model-secret", search_provider="tavily", search_api_key="search-secret", **kwargs)
+    return Settings(_env_file=None, model_api_key="model-secret", search_provider="tavily", search_api_key="search-secret", answer_review_enabled=False, **kwargs)
 
 
 def completion(content="回答", calls=None):

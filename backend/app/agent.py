@@ -14,7 +14,7 @@ from .config import Settings
 from .model import ModelError, ModelService
 from .search import SearchError, SearchRequest, SearchService
 from .reader import PageReader, ReadRequest
-from .prompts import SYSTEM
+from .prompts import SYSTEM, REVIEW
 
 TOOLS = [{"type": "function", "function": {
     "name": "search_web", "description": "检索公开网页，返回标题、来源编号、链接、摘要和可用日期。",
@@ -76,6 +76,7 @@ class Agent:
         warnings: list[str] = []
         answer = ""
         reviewed = False
+        review_calls = 0
         failed = False
         retrieval_exhausted = False
         attempted: set[tuple[str, str]] = set()
@@ -102,10 +103,29 @@ class Agent:
                         warnings.append("已达到工具调用或检索时间预算，停止检索；以下回答仅基于已有资料，可能存在缺口。")
                         yield {"type": "budget", "message": warnings[-1]}
                     messages = [system, *history]
+                    if reviewed:
+                        messages.append({"role": "system", "content":
+                            "这是发布前核对触发补查后的回答。请结合新增证据再次自查切题性和每个关键数值的依据；"
+                            "只保留回答本轮问题所需的信息，不能用相关但不回答问题的资料填充篇幅。"
+                            "简单事实题仍查不到核心事实时，用两三句话说明缺口和核实方式，不展开无关地址、班次或背景。"})
                     if limited:
                         messages.append({"role": "system", "content": warnings[-1] + "请立即回答，明确未核实部分，不再调用工具。简单事实题只给有证据的答案或简短缺口说明，不展开无关背景。"})
                     yield {"type": "model_start", "message": "正在整理回答…" if limited else "正在理解问题和已有资料…"}
                     message = await complete(messages, [] if limited else TOOLS)
+                    if (not message.tool_calls and review_calls < 2 and self.settings.answer_review_enabled
+                            and (current_sources or citation_ids(message.content or ""))):
+                        reviewed = True
+                        review_calls += 1
+                        yield {"type": "review_start", "message": "正在核对答案是否切题、引用是否支持结论…"}
+                        # The draft is never committed or displayed. The reviewer
+                        # can use the remaining tool budget to fill evidence gaps.
+                        # If the first check requested more evidence, check the
+                        # resulting answer too. This last check cannot reopen
+                        # research, so both review cost and the loop are bounded.
+                        review_tools = [] if review_calls == 2 or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else TOOLS
+                        message = await complete([*messages, {"role": "system", "content": REVIEW + json.dumps({"draft": message.content}, ensure_ascii=False)}], review_tools)
+                        if not review_tools and message.tool_calls:
+                            raise ModelError("model_ignored_review", "模型未按最终核对要求结束工具调用。")
                     if not message.tool_calls:
                         answer = message.content or ""
                         known = {source["id"] for source in sources if not source["is_mock"]}
