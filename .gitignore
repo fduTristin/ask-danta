@@ -1,0 +1,21 @@
+# Local secrets and authentication state
+.env*
+!.env.example
+.private/
+token.json
+tokens.json
+
+# Dependencies and build output
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+dist/
+build/
+target/
+.pytest_cache/
+
+# Local runtime and editor artifacts
+*.log
+~$*
