@@ -6,7 +6,7 @@
 - `frontend/src/`: React/TypeScript interface and CSS; keep UI assets here. `frontend/vite.config.ts` configures the `/api` development proxy.
 - `tests/`: backend and adapter tests using synthetic responses.
 - `scripts/`: dependency installation, development server supervision, and live-search checks.
-- `skills/campus-research/`: reserved for the research Skill; loading is not implemented yet.
+- `skills/campus-research/`: repository-owned research Skill, loaded by `backend/app/research.py` and applied in the Agent.
 - `plan.md`: milestones. Update it and `README.md` when behavior changes; distinguish implemented features from plans.
 
 ## Build, Test, and Development Commands
@@ -21,6 +21,7 @@ Use Python 3.11+, uv, and Node.js 22.12+ with npm. Run from the repository root:
 - `python scripts/check_search.py`: validate actual Tavily search against a running backend; requires live configuration and consumes service quota.
 - `uv run --frozen python scripts/campus_login.py`: interactive project-owned campus login; passwords must never appear in command arguments or chat.
 - `uv run --frozen python scripts/check_campus.py`: validate campus search and thread contracts directly, without starting the backend; requires project-owned credentials and reads real posts.
+- `uv run --frozen python scripts/check_research_chat.py`: validate the live cross-source Agent tool chain and web-only followup; requires a running stage-four backend and consumes model/search quota.
 
 ## Coding Style & Naming Conventions
 
