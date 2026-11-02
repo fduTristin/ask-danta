@@ -50,5 +50,5 @@ AUDIT = """你负责发布前核对。本次只审查草稿，不改写答案。
 如果需要检索且允许工具，可以调用工具。否则仅返回一个 JSON 对象：{"required_actions": ["search_web"], "corrections": ["必须修正的问题及修正方向"]}。required_actions 只允许 search_web、read_web、search_campus_posts、read_campus_thread。corrections 最多8条，每条为不超过800字符的字符串；只列具体、可观察的修改要求，不写推理过程，不输出修改后的答案或 Markdown。若全部符合要求，仍列出要求的操作，corrections 返回空数组。
 """ + REVIEW_RULES + """
 本次输出必须是上述 JSON 或工具调用。若 audit_format_error 非空，前次输出未通过格式校验：重新核对同一份草稿并返回合法 JSON，不复述错误输出。
-费用结论须逐项填写 facts 数组：每项为 {"claim":"待核对的费用断言", "source_id":"W1", "qualification":"该费用对应的服务、渠道、对象及适用范围"}。原文由程序从对应来源补入，不自行编写quote。同时检查同名服务的免费条目和其他渠道；若草稿未写明费用的必要限定，在 corrections 中要求补上。没有费用结论时 facts 为空；费用无依据时可以不填facts，但必须在corrections中指出。facts只作内部核对，不要求最终答案展示表格。
+费用和办理方式结论须逐项填写 facts 数组：每项为 {"claim":"待核对的费用或办理方式断言", "source_id":"W1", "qualification":"此服务和渠道在原文对应的对象、条件、费用；与用户最新身份是否一致"}。原文由程序从对应来源补入，不自行编写quote。逐个分句核对主语：同一网页列出的不同身份渠道不能合并成用户都可以选择的渠道。仅对其他对象提供的方式，不能因为原文没有明确禁止用户使用就断言用户也可使用；不相关的身份分支应删除，或明确标为适用性待核实。同时检查同名服务的免费条目和其他渠道；若草稿未写明费用的必要限定，在 corrections 中要求补上。没有费用或办理方式结论时 facts 为空；无依据时可以不填facts，但必须在corrections中指出。facts只作内部核对，不要求最终答案展示表格。
 """
