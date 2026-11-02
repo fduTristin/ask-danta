@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
 import httpx
-from app.agent import Agent, Session
+from app.agent import Agent, Session, MAX_REVIEW_CALLS
 from app.config import Settings
 from app.model import ModelService
 from app.search import SearchResponse, SearchResult, SearchService
@@ -182,7 +182,7 @@ async def evaluate_case(case: dict, config: Settings, reports: list[dict], outpu
             "repetition": repetition,
             "fixture_revision": 2, "manual_review": {"verdict": "pending", "reason": "逐项核对证据后填写评审文档；不自动以引用数或状态打分。"},
             "model": config.model_name, "thinking": getattr(config, "model_thinking", "disabled"),
-            "settings": {key: getattr(config, key) for key in ("model_reasoning_effort", "model_max_tokens", "model_timeout_seconds", "search_depth", "max_tool_calls", "request_budget_seconds", "answer_review_enabled")},
+            "settings": {"max_answer_review_calls": MAX_REVIEW_CALLS, **{key: getattr(config, key) for key in ("model_reasoning_effort", "model_max_tokens", "model_timeout_seconds", "search_depth", "max_tool_calls", "request_budget_seconds", "answer_review_enabled")}},
             "expected": case["expected"], "turns": turns}
         reports.append(private_safe_report(report) if case.get("campus") == "live" else report)
         output.write_text(json.dumps(reports, ensure_ascii=False, indent=2), encoding="utf-8")

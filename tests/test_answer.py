@@ -45,6 +45,9 @@ def test_failed_campus_citation_is_repaired_without_new_tools():
         if n == 4:
             # Even an editor can introduce a fabricated citation; validate it too.
             return completion("树洞不可用 [C1]，官网说明到江湾窗口 [W1]。")
+        if n == 6:
+            assert not payload["validation_errors"]
+            return completion('{"corrections": []}')
         assert "tools" not in body
         assert payload["validation_errors"] == [{"code": "unknown_citations", "ids": ["C1"]}]
         return completion("官网说明到江湾窗口 [W1]。")
@@ -53,7 +56,7 @@ def test_failed_campus_citation_is_repaired_without_new_tools():
         session = client.post("/api/sessions").json()["session_id"]
         final = events(client, session)[-1]
         assert final["message"]["status"] == "complete"
-        assert final["tool_calls"] == 1 and n == 5
+        assert final["tool_calls"] == 1 and n == 6
         assert "C1" not in json.dumps(client.app.state.sessions[session].history)
 
 
@@ -76,7 +79,7 @@ def test_overlong_answer_has_bounded_repairs_and_never_gets_cut_mid_sentence(rep
     with TestClient(create_app(config(answer_review_enabled=False), httpx.MockTransport(handler))) as client:
         session = client.post("/api/sessions").json()["session_id"]
         final = events(client, session, "请简要解释你的用途，最多40字")[-1]
-        assert n == (3 if repairs_succeed else 4) and final["tool_calls"] == 0
+        assert n == (3 if repairs_succeed else 5) and final["tool_calls"] == 0
         assert len(final["message"]["content"]) <= 40
         assert final["message"]["status"] == ("complete" if repairs_succeed else "incomplete")
         assert long not in json.dumps(client.app.state.sessions[session].history, ensure_ascii=False)
@@ -139,7 +142,7 @@ def test_invalid_audit_does_not_publish_the_unchecked_draft():
         result = events(client, session_id)
         assert any(e.get("error", {}).get("code") == "model_invalid_review" for e in result)
         assert result[-1]["message"]["status"] == "incomplete"
-        assert result[-1]["metrics"]["review_calls"] == 3 and n == 5
+        assert result[-1]["metrics"]["review_calls"] == 4 and n == 6
         assert "未经核对的猜测" not in json.dumps(result, ensure_ascii=False)
 
 
@@ -163,12 +166,14 @@ def test_invalid_audit_can_retry_and_edit_within_the_same_review_budget():
         assert payload["audit_format_error"]
         if n == 4:
             return completion('{"corrections": ["资料未说明办结时限，删去当天承诺。"]}')
+        if n == 6:
+            return completion('{"corrections": []}')
         return completion("已查资料未说明办结时限 [W1]。")
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
         session_id = client.post("/api/sessions").json()["session_id"]
         final = events(client, session_id)[-1]
-        assert final["message"]["status"] == "complete" and n == 5
-        assert final["metrics"]["review_calls"] == 3
+        assert final["message"]["status"] == "complete" and n == 6
+        assert final["metrics"]["review_calls"] == 4
         assert final["metrics"]["review_format_retries"] == 1
         assert "保证当天" not in final["message"]["content"]
 
@@ -214,7 +219,7 @@ def test_audit_of_simple_chat_does_not_require_retrieval():
         assert n == 2 and final["tool_calls"] == 0
 
 
-def test_final_audit_rejects_a_new_unsupported_claim_introduced_by_editing():
+def test_final_audit_can_repair_a_new_unsupported_claim_introduced_by_editing():
     n = 0
     def handler(request):
         nonlocal n
@@ -229,6 +234,8 @@ def test_final_audit_rejects_a_new_unsupported_claim_introduced_by_editing():
             return completion('{"corrections": ["精简答案，资料未提及其他校区。"]}')
         if n == 4:
             return completion("其他校区禁止办理 [W1]。")
+        if n == 6:
+            return completion("资料未说明其他校区的适用情况 [W1]。")
         body = json.loads(request.content)
         assert "tools" not in body
         assert json.loads(body["messages"][-1]["content"])["draft"] == "其他校区禁止办理 [W1]。"
@@ -236,8 +243,9 @@ def test_final_audit_rejects_a_new_unsupported_claim_introduced_by_editing():
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
         session_id = client.post("/api/sessions").json()["session_id"]
         final = events(client, session_id)[-1]
-        assert n == 5 and final["metrics"]["review_calls"] == 3
-        assert final["message"]["status"] == "incomplete"
+        assert n == 6 and final["metrics"]["review_calls"] == 4
+        assert final["message"]["status"] == "complete"
+        assert final["message"]["content"] == "资料未说明其他校区的适用情况 [W1]。"
         assert "其他校区禁止办理" not in json.dumps(client.app.state.sessions[session_id].history, ensure_ascii=False)
 
 

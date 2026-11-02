@@ -42,6 +42,7 @@ PLAN_TOOL = {"type": "function", "function": {
 ARGUMENTS = {"search_web": SearchRequest, "read_web": ReadRequest,
              "search_campus_posts": CampusSearchRequest, "read_campus_thread": CampusThreadRequest,
              "plan_research": ResearchPlan}
+MAX_REVIEW_CALLS = 4
 
 
 class ChatRequest(BaseModel):
@@ -174,7 +175,7 @@ class Agent:
                     known = {source["id"] for source in sources if not source["is_mock"] and permitted_source(source)}
                     corrections = []
                     audit_format_error = None
-                    while not message.tool_calls and review_calls < 3:
+                    while not message.tool_calls and review_calls < MAX_REVIEW_CALLS:
                         issues = answer_issues(message.content or "", known, limit)
                         if not needs_review and not issues and not corrections:
                             break
@@ -186,7 +187,7 @@ class Agent:
                         metrics["review_calls"] = review_calls
                         yield {"type": "review_start", "message": "正在核对答案是否切题、引用是否支持结论…"}
                         # A separate audit identifies unsupported assertions before
-                        # editing. At most three review/edit calls share the original
+                        # editing. At most four review/edit calls share the original
                         # deadline; only the first audit can reopen retrieval.
                         review_tools = [] if not needs_review or issues or review_calls > 1 or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else available_tools()
                         payload = review_payload(question, history, [s for s in sources if permitted_source(s)],
@@ -207,13 +208,13 @@ class Agent:
                             try:
                                 corrections = AnswerAudit.model_validate_json(checked.content).corrections
                             except ValidationError:
-                                if review_calls < 3:
+                                if review_calls < MAX_REVIEW_CALLS:
                                     audit_format_error = "仅返回 corrections 字符串数组，不要附加正文或代码块。"
                                     metrics["review_format_retries"] = metrics.get("review_format_retries", 0) + 1
                                     continue
                                 raise ModelError("model_invalid_review", "模型核对结果格式无效，本轮未能完成回答。") from None
                             needs_review = False
-                            if (corrections or issues) and review_calls == 3:
+                            if (corrections or issues) and review_calls == MAX_REVIEW_CALLS:
                                 raise ModelError("answer_review_incomplete", "答案仍需修正，但本轮核对预算已用完。")
                         else:
                             message = checked

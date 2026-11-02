@@ -81,13 +81,16 @@ def test_review_can_request_additional_search_within_same_budget():
             assert "补查后仍猜测24小时" in body["messages"][-1]["content"]
             assert "tools" not in body
             return completion(json.dumps({"corrections": ["删去无依据的24小时断言。"]}))
+        if n == 7:
+            return completion('{"corrections": []}')
         return completion("窗口 [W1]")
 
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
         id = client.post("/api/sessions").json()["session_id"]
         result = events(client, id)
-        assert n == 6 and result[-1]["tool_calls"] == 2
-        assert sum(e["type"] == "review_start" for e in result) == 3
+        assert n == 7 and result[-1]["tool_calls"] == 2
+        assert result[-1]["message"]["status"] == "complete"
+        assert sum(e["type"] == "review_start" for e in result) == 4
         assert "24小时" not in result[-1]["message"]["content"]
 
 
