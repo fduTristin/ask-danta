@@ -78,7 +78,7 @@ API 使用 [Tavily 官方 Search 接口](https://docs.tavily.com/documentation/a
 
 ## API 契约
 
-`GET /api/health` 返回 `stage=4`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 与 `campus.available` 保持 `false`（健康检查不验证远端可用性）；`campus.credentials_present` 仅表示文件存在；`auth_state` 为 `missing/invalid/expired/configured`，`tools_enabled` 代表本地凭据可用于尝试调用，不保证远端仍有效。`skills` 列出已加载的 `campus-research`。
+`GET /api/health` 返回 `stage=5`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 与 `campus.available` 保持 `false`（健康检查不验证远端可用性）；`campus.credentials_present` 仅表示文件存在；`auth_state` 为 `missing/invalid/expired/configured`，`tools_enabled` 代表本地凭据可用于尝试调用，不保证远端仍有效。`skills` 列出已加载的 `campus-research`。
 
 `POST /api/search` 保留为独立搜索验证入口；同一搜索适配器已注册为 Agent 的 `search_web(query)` 工具。请求：
 
@@ -249,14 +249,26 @@ python scripts/check_chat.py
 脚本拒绝把 mock 结果记为真实验收通过，只输出提供商、数量及来源 URL。也应在页面手动搜索并打开来源，核对标题、摘要和相关性。
 `check_chat.py` 会新建独立测试会话，要求模型实际搜索、验证最终回答包含来源编号，再追问校区条件，最后删除该测试会话；上游失败、无工具结果或 mock 来源都不算通过。两项脚本均支持 `--port`。
 
-质量评测与接口冒烟分开运行。以下命令会读取本地配置、调用真实 DeepSeek，并在 3 个 live 案例调用 Tavily/公开网页，产生服务费用；其余案例为明确标注的合成检索/正文搭配真实模型，不属于真实检索验收：
+质量评测与接口冒烟分开运行。16 组固定案例均调用真实 DeepSeek，其中 4 组使用真实 Tavily/公开网页，`live_policy` 还使用本项目树洞凭据；其余检索/正文为明确标注的合成情境。调用产生服务费用；无真实配置时不能把合成结果当作真实验收：
 
 ```powershell
 uv run --frozen python scripts/evaluate_quality.py --label local-check
 uv run --frozen python scripts/evaluate_quality.py --label thinking-check --thinking enabled --case distance
+uv run --frozen python scripts/evaluate_quality.py --label conflict-check --case source_conflict --case campus_unavailable
+uv run --frozen python scripts/evaluate_quality.py --label no-review-check --review disabled --case source_conflict --case post_injection
+uv run --frozen python scripts/summarize_quality.py .private/quality/local-check.json .private/quality/no-review-check.json
 ```
 
-报告保存到忽略目录 `.private/quality/`，包含固定问题、回答、证据、调用记录与用量，不保存密钥或思考内容。脚本采集结果，需人工逐项核对；不会用“接口成功”或引用数量自动判定通过。已有前后对比、未成功的中间结果和默认值选择见 [质量验收记录](docs/quality-evaluation.md)。
+报告保存到忽略目录 `.private/quality/`，包含固定问题、回答、证据、调用记录与用量，不保存密钥或思考内容。真实树洞正文及回答中原样复制的正文被移除，只保留来源标识供本地核对；合成帖子可完整复查。合成认证文件使用临时目录，绝不读取真实凭据；同名标签会拒绝覆盖旧结果。脚本采集结果，需人工逐项核对；不会用“接口成功”或引用数量自动判定通过。费用摘要按已观测 token、缓存明细及搜索次数估算，注明定价核对日期、峰谷价范围和计费缺口，不能代替账单。已有前后对比、未成功的中间结果和默认值选择见 [质量验收记录](docs/quality-evaluation.md)。
+
+第五步浏览器演示依次运行：① 自动/允许树洞模式，对照在读证明官方说明与同学经验，再追问“改到枫林校区”；② 新建会话，选择“仅公开网页”，查询研究生院官网；③ 在隔离演示服务验证树洞失效后继续网页回答：
+
+```powershell
+npm --prefix frontend run build
+uv run --frozen python scripts/demo_failure.py --port 8002
+```
+
+打开 `http://127.0.0.1:8002`，页面顶部会明确标注模拟认证失效。模型和网页服务仍是真实调用；树洞登录/刷新/业务请求固定返回合成 401，不会访问真实树洞，也不会读取或覆盖项目凭据。提问“先查树洞江湾图书馆体验；若认证失败，继续查复旦图书馆官网，说明是否取得同学经验”。结束后 Ctrl+C 停止演示，临时合成凭据自动清理。不要在演示页输入真实密码。
 
 2026-11-01 验证记录：
 

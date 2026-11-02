@@ -34,7 +34,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
             yield
             app.state.sessions.clear()
 
-    app = FastAPI(title="Campus Agent", version="0.4.0", lifespan=lifespan)
+    app = FastAPI(title="Campus Agent", version="0.5.0", lifespan=lifespan)
 
     @app.exception_handler(SearchError)
     @app.exception_handler(ModelError)
@@ -56,7 +56,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
     @app.get("/api/health")
     async def health():
         return {
-            "status": "ok", "stage": 4,
+            "status": "ok", "stage": 5,
             "model": {
                 "name": settings.model_name,
                 "configured": bool(settings.model_api_key.get_secret_value()),

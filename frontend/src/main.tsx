@@ -60,7 +60,7 @@ function App() {
       <aside>
         <a className="brand" href="/">校内信息<br /><strong>研究助手</strong></a>
         <p className="intro">从正式通知到校园经验，<br />让每一条建议有据可查。</p>
-        <div className="stage"><span>当前进度</span><h2>跨来源校园调研</h2><p>第四步 / 共六步</p></div>
+        <div className="stage"><span>当前进度</span><h2>测试与质量验收</h2><p>第五步 / 共六步</p></div>
         <p className="scope">对照官方网页与校园经验，按需读取帖子上下文，为回答保留可核对的来源。</p>
         <footer>Campus Agent<br />本机开发环境</footer>
       </aside>
