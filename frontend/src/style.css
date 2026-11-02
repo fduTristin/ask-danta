@@ -87,10 +87,14 @@ label { display: block; }
 .empty-layout .messages-scroll { flex: 0 1 auto; margin-top: clamp(16px, 9vh, 110px); }
 .empty-layout .messages { padding: 16px 0 20px; }
 .composer-region { position: relative; width: min(640px, calc(100% - 48px)); margin: 0 auto; padding: 8px 0 max(20px, env(safe-area-inset-bottom)); flex-shrink: 0; }
-.composer { background: var(--soft); border: 1px solid var(--border); border-radius: 23px; padding: 13px 12px 10px; }
-.composer textarea { display: block; width: 100%; min-height: 32px; max-height: 180px; resize: none; background: transparent; border: 0; outline: none; padding: 3px 7px; color: inherit; font-size: 16px; border-radius: 5px; line-height: 1.6; }
+.composer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 8px; background: var(--soft); border: 1px solid var(--border); border-radius: 23px; padding: 10px 12px; }
+.composer textarea { grid-column: 2; grid-row: 1; display: block; width: 100%; min-width: 0; min-height: 32px; max-height: 180px; resize: none; background: transparent; border: 0; outline: none; padding: 3px 7px; color: inherit; font-size: 16px; border-radius: 5px; line-height: 1.6; }
 .composer textarea::placeholder { color: var(--muted); }
-.composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.composer .source-trigger { grid-column: 1; grid-row: 1; justify-self: start; }
+.composer .send { grid-column: 3; grid-row: 1; }
+.composer-multiline { row-gap: 8px; padding-top: 13px; }
+.composer-multiline textarea { grid-column: 1 / -1; }
+.composer-multiline .source-trigger, .composer-multiline .send { grid-row: 2; }
 .source-trigger { min-width: 0; min-height: 34px; padding: 6px 11px; gap: 7px; border: 1px solid #dce6f0; border-radius: 999px; background: #fff; color: #416581; font-size: 12px; line-height: 1.5; }
 .source-trigger span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .source-trigger > svg { width: 15px; height: 15px; }

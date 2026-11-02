@@ -18,6 +18,7 @@ export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const sessionRef = useRef<Session | null>(null);
   const [input, setInput] = useState('');
+  const [multiline, setMultiline] = useState(false);
   const inputRef = useRef('');
   const drafts = useRef(new Map<string, string>());
   const [mode, setMode] = useState<SourceMode>('auto');
@@ -121,8 +122,33 @@ export function App() {
   }, [session?.session_id, session?.busy, busy]);
   useLayoutEffect(() => {
     const element = textarea.current;
-    if (element) { element.style.height = 'auto'; element.style.height = `${Math.min(element.scrollHeight, 180)}px`; }
-  }, [input]);
+    const composer = element?.form;
+    if (!element || !composer) return;
+    const resize = () => {
+      const style = getComputedStyle(element);
+      const layout = getComputedStyle(composer);
+      const source = composer.querySelector<HTMLElement>('.source-trigger')!;
+      const send = composer.querySelector<HTMLElement>('.send')!;
+      const inlineWidth = composer.clientWidth - parseFloat(layout.paddingLeft) - parseFloat(layout.paddingRight)
+        - source.offsetWidth - send.offsetWidth - 2 * parseFloat(layout.columnGap);
+      // Always measure against the inline width, so moving controls below cannot
+      // make the same text oscillate between the two layouts.
+      element.style.width = `${Math.max(1, inlineWidth)}px`;
+      element.style.height = 'auto';
+      const lineHeight = parseFloat(style.lineHeight) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      setMultiline(!!element.value && (element.value.includes('\n') || element.scrollHeight > lineHeight + 1));
+      element.style.width = '';
+      element.style.overflowY = element.value ? 'auto' : 'hidden';
+      element.style.height = `${element.value ? Math.min(element.scrollHeight, parseFloat(style.maxHeight)) : Math.ceil(lineHeight)}px`;
+    };
+    resize();
+    let previousWidth = composer.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (composer.clientWidth !== previousWidth) { previousWidth = composer.clientWidth; resize(); }
+    });
+    observer.observe(composer);
+    return () => observer.disconnect();
+  }, [input, multiline, mode]);
   useLayoutEffect(() => {
     if (nearBottom.current) bottom.current?.scrollIntoView({ block: 'end' });
     else setShowLatest(true);
@@ -310,11 +336,10 @@ export function App() {
           {health?.search.is_mock && <p className="notice">当前搜索使用合成样例，不能作为实际办事依据。</p>}
           {error && !action && <div className="inline-error" role="alert">{error}{input.trim() && enabled && <button onClick={() => void send()} disabled={activeBusy || working}>重试</button>}<button onClick={() => void load()} disabled={busy || working}>重新检查</button></div>}
           {info && <p className="notice" role="status">{info}</p>}
-          <form className="composer" onSubmit={event => { event.preventDefault(); void send(); }}>
+          <form className={`composer${multiline ? ' composer-multiline' : ''}`} onSubmit={event => { event.preventDefault(); void send(); }}>
+            <SourcePicker value={mode} campusReady={campusReady} disabled={activeBusy || working || !ready} onChange={next => void changeMode(next)} />
             <textarea ref={textarea} rows={1} aria-label="你的问题或追问" placeholder="向旦挞提问…" maxLength={8000} value={input} disabled={activeBusy || working || !ready} onChange={event => editInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); void send(); } }} />
-            <div className="composer-bar"><SourcePicker value={mode} campusReady={campusReady} disabled={activeBusy || working || !ready} onChange={next => void changeMode(next)} />
-              {activeBusy ? <button type="button" className="send" aria-label="停止回答" title="停止回答" disabled={working} onClick={() => { setWorking(true); void stop().catch(cause => setError(errorText(cause))).finally(() => setWorking(false)); }}><Square /></button> : <button type="submit" className="send" aria-label="发送" title="发送（Enter）" disabled={!enabled || !ready || working || !input.trim()}><ArrowUp /></button>}
-            </div>
+            {activeBusy ? <button type="button" className="send" aria-label="停止回答" title="停止回答" disabled={working} onClick={() => { setWorking(true); void stop().catch(cause => setError(errorText(cause))).finally(() => setWorking(false)); }}><Square /></button> : <button type="submit" className="send" aria-label="发送" title="发送（Enter）" disabled={!enabled || !ready || working || !input.trim()}><ArrowUp /></button>}
           </form>
           {effectiveMode === 'all' && !campusReady && <p className="notice">树洞暂不可用，本轮将说明限制并使用网页。<button onClick={() => setSettingsOpen(true)}>重新登录</button></p>}
         </div>

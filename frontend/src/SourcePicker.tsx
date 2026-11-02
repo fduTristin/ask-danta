@@ -58,6 +58,9 @@ export function SourcePicker({ value, campusReady, disabled, onChange }: Props) 
     window.addEventListener('resize', position);
     window.visualViewport?.addEventListener('resize', position);
     window.visualViewport?.addEventListener('scroll', position);
+    const observer = new ResizeObserver(position);
+    const composer = trigger.current?.closest('form');
+    if (composer) observer.observe(composer);
     const outside = (event: PointerEvent) => {
       if (!menu.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node)) close();
     };
@@ -67,6 +70,7 @@ export function SourcePicker({ value, campusReady, disabled, onChange }: Props) 
       window.visualViewport?.removeEventListener('resize', position);
       window.visualViewport?.removeEventListener('scroll', position);
       document.removeEventListener('pointerdown', outside);
+      observer.disconnect();
     };
   }, [visible]);
   useLayoutEffect(() => {
@@ -74,10 +78,10 @@ export function SourcePicker({ value, campusReady, disabled, onChange }: Props) 
   }, [visible, !!placement]);
 
   return <>
-    <button ref={trigger} type="button" className="source-trigger" disabled={disabled} aria-label={`搜索范围：${label}`} aria-haspopup="menu" aria-expanded={visible} aria-controls={visible ? id : undefined}
+    <button ref={trigger} type="button" className="source-trigger" disabled={disabled} title={label} aria-label={`搜索范围：${label}`} aria-haspopup="menu" aria-expanded={visible} aria-controls={visible ? id : undefined}
       onClick={() => visible ? close() : show()} onKeyDown={event => {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); show(event.key === 'ArrowUp'); }
-      }}><Icon aria-hidden="true" /><span>{label}</span><ChevronDown className="source-chevron" aria-hidden="true" /></button>
+      }}><Icon aria-hidden="true" /><span>{value === 'auto' ? '自动' : selected.label}</span><ChevronDown className="source-chevron" aria-hidden="true" /></button>
     {visible && createPortal(<div ref={menu} id={id} className="source-menu" role="menu" aria-label="搜索范围" style={{ ...placement, visibility: placement ? 'visible' : 'hidden' }} onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); return; }
       // Return to the trigger before the browser moves focus to the next control.
