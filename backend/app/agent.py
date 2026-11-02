@@ -122,7 +122,9 @@ class Agent:
         failed = False
         retrieval_exhausted = False
         attempted: set[tuple[str, str]] = set()
-        metrics = {"model_calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        metrics = {"model_calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
+                   "usage_reported_calls": 0, "cache_usage_reported_calls": 0,
+                   "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 0}
         system = {"role": "system", "content": SYSTEM + "\n当前日期：" + datetime.now(timezone(timedelta(hours=8))).date().isoformat()
                   + "\n本轮数据源权限：" + ("公开网页与树洞只读工具。" if campus_allowed else "仅公开网页；不得调用树洞工具或引用此前树洞资料。")
                   + "\n已加载 Skill：" + self.skill.name + "\n适用条件：" + self.skill.description + "\n" + self.skill.instructions
@@ -137,6 +139,14 @@ class Agent:
             message = await within(self.model.complete(messages, tools), deadline)
             for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
                 metrics[key] += message.usage.get(key, 0)
+            if all(key in message.usage for key in ("prompt_tokens", "completion_tokens", "total_tokens")):
+                metrics["usage_reported_calls"] += 1
+            cache_keys = ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens")
+            if (all(key in message.usage for key in cache_keys)
+                    and sum(message.usage[key] for key in cache_keys) == message.usage.get("prompt_tokens")):
+                metrics["cache_usage_reported_calls"] += 1
+                for key in cache_keys:
+                    metrics[key] += message.usage[key]
             return message
 
         try:

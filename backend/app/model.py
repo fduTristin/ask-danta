@@ -87,8 +87,9 @@ class ModelService:
             payload = Completion.model_validate(response.json())
             message = payload.choices[0].message
             message.usage = {key: value for key, value in payload.usage.items()
-                             if key in ("prompt_tokens", "completion_tokens", "total_tokens")
-                             and isinstance(value, int) and value >= 0}
+                             if key in ("prompt_tokens", "completion_tokens", "total_tokens",
+                                        "prompt_cache_hit_tokens", "prompt_cache_miss_tokens")
+                             and type(value) is int and value >= 0}
             return message
         except (httpx.TimeoutException, TimeoutError) as exc:
             raise ModelError("model_timeout", "模型响应超时，本轮未能完成回答。", 504) from exc

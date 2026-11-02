@@ -227,6 +227,8 @@ access token 被上游以 `401` 拒绝后，用 refresh token 请求 `POST /api/
 
 ## 验证
 
+最终事件的 `metrics` 除累计 token 和模型调用次数外，还记录已报告完整用量的调用数 `usage_reported_calls`，以及缓存命中/未命中 token 和 `cache_usage_reported_calls`。缓存明细之和必须等于该调用的输入 token 才计入。缺失用量不代表零费用；模型故障可能产生无法观测的费用。
+
 ```powershell
 uv run --frozen pytest -q
 npm --prefix frontend run build
