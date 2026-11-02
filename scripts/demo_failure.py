@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 import httpx
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
@@ -38,17 +38,26 @@ class ExpiredCampusTransport(httpx.AsyncBaseTransport):
 
 def build_demo(settings: Settings, token_path: Path) -> FastAPI:
     token_path.write_text(json.dumps({"access": "demo-invalid-access", "refresh": "demo-invalid-refresh"}))
-    config = settings.model_copy(update={"campus_auth_file": token_path})
+    config = settings.model_copy(update={
+        "campus_auth_file": token_path,
+        "session_db_file": token_path.parent / "history" / "chat.sqlite3",
+    })
     app = create_app(config, transport=ExpiredCampusTransport())
     dist = ROOT / "frontend/dist"
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
         html = (dist / "index.html").read_text(encoding="utf-8")
-        banner = ('<aside role="status" style="padding:16px;background:#fff1c2;color:#3e310e;text-align:center">'
+        banner = ('<style>body{height:100dvh;display:flex;flex-direction:column}'
+                  'body>aside{flex-shrink:0}#root{flex:1;min-height:0}#root>.app{height:100%}</style>'
+                  '<aside role="status" style="padding:16px;background:#fff1c2;color:#3e310e;text-align:center">'
                   '模拟认证失效演示 · 树洞固定返回 401；模型和网页搜索使用真实服务。'
                   '独立演示凭据，不修改你的登录状态。</aside>')
         return html.replace("<body>", "<body>" + banner, 1)
+
+    @app.get("/danta-logo.webp", include_in_schema=False)
+    async def logo():
+        return FileResponse(dist / "danta-logo.webp", media_type="image/webp")
 
     app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
     return app

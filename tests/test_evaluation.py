@@ -48,11 +48,15 @@ def test_failure_demo_never_reads_or_changes_project_auth(tmp_path, monkeypatch)
     dist = tmp_path / "frontend/dist"
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<html><body>test app</body></html>")
+    (dist / "danta-logo.webp").write_bytes(b"synthetic-logo")
     real_path = tmp_path / "real-tokens.json"
     real_path.write_text("not valid credentials; must never be loaded")
-    config = Settings(_env_file=None, campus_auth_file=real_path, model_api_key="test")
+    real_history = tmp_path / "real-history" / "chat.sqlite3"
+    config = Settings(_env_file=None, campus_auth_file=real_path, model_api_key="test", session_db_file=real_history)
     with TestClient(demo_failure.build_demo(config, tmp_path / "demo-tokens.json")) as client:
         assert "模拟认证失效演示" in client.get("/").text
+        assert client.get("/danta-logo.webp").content == b"synthetic-logo"
+        assert not real_history.exists()
         assert client.get("/api/health").json()["campus"]["auth_state"] == "configured"
         response = client.post("/api/campus/search", json={"query": "demo"})
         assert response.json()["error"]["code"] == "campus_auth_failed"
