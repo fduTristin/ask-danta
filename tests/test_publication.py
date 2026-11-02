@@ -5,7 +5,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.answer import AnswerAudit, audit_fact_errors, copied_posts, model_history, model_view, retrieval_forbidden
+from app.answer import AnswerAudit, audit_fact_errors, copied_posts, model_history, model_view, retrieval_forbidden, review_payload, requested_actions
 from app.main import create_app
 from test_chat import completion, call, events, search_result
 from test_quality import config, clean_config
@@ -119,3 +119,25 @@ def test_fee_audit_must_ground_its_quote_in_actual_evidence():
     assert not audit_fact_errors(audit, payload)
     audit.facts[0].quote = '电子证明8元'
     assert audit_fact_errors(audit, payload)
+
+
+def test_review_preserves_reply_metadata_without_claiming_complete_read():
+    source = dict(id='C1', source='campus', is_mock=False, hole_id=12, floor_id=456, snippet='合成经验')
+    history = [dict(role='tool', content=json.dumps(dict(thread=dict(id=12, reply=9),
+        raw_count=1, offset=0, complete=False, has_more=None, results=[source])))]
+    payload = review_payload('只读取一层是否代表全部？', history, [source], 0, '未提供回复数[C1]', None)
+    page = payload['thread_reads'][0]
+    assert page['reported_reply_count'] == 9 and page['raw_count'] == 1 and not page['complete']
+    assert page['source_ids'] == ['C1'] and 'floor_id' not in json.dumps(payload)
+
+
+@pytest.mark.parametrize('question,expected', [
+    ('请搜索相关帖子并读取上下文', {'search_campus_posts', 'read_campus_thread'}),
+    ('请查官网资料，再读取网页正文', {'search_web', 'read_web'}),
+    ('只用已有资料，不要再搜索', set()),
+    ('解释如何读取网页，不用实际操作', set()),
+    ('请解释“请搜索官网”这句话', set()),
+    ('不要读取网页，先确认我的校区', set()),
+])
+def test_explicit_actions_do_not_treat_negations_or_quoted_instructions_as_commands(question, expected):
+    assert requested_actions(question) == expected

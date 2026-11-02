@@ -87,6 +87,33 @@ def retrieval_forbidden(question: str) -> bool:
     return bool(re.search(r'(?:不要|不再|不用|无需|禁止)(?:再)?(?:搜索|检索|查找|查阅)|只(?:依据|根据|用)(?:已有|现有)', question))
 
 
+def requested_actions(question: str) -> set[str]:
+    """Recognize explicit operations, not school names or answers to cases.
+
+    This is a conservative guard for direct Chinese commands. Semantic intent
+    outside these forms remains the model's responsibility.
+    """
+    if retrieval_forbidden(question):
+        return set()
+    text = re.sub(r'[“「『].*?[”」』]', '', question)
+    actions = set()
+    for match in re.finditer(r'(?:^|请|帮我|先|再|并|同时|然后)(?:搜索|检索|查找|查阅|查)(?!到|无|不|完)([^。！？；]{0,120})', text):
+        target = match.group(1)
+        if re.search(r'树洞|帖子', target):
+            actions.add('search_campus_posts')
+        if re.search(r'官网|官方|网页|公开', target) or not re.search(r'树洞|帖子', target):
+            actions.add('search_web')
+    for match in re.finditer(r'(?:^|请|并|再|先|，|。|；|：)(?:读取|阅读|读一下|读一读)([^。！？；]{0,60})', text):
+        target = match.group(1)
+        if re.search(r'帖子|树洞|上下文', target):
+            actions.add('read_campus_thread')
+        elif re.search(r'网页|正文|页面|官网', target):
+            actions.add('read_web')
+    if '只用公开网页' in text or re.search(r'(?:对照|比较)[^。！？；]{0,30}官方', text):
+        actions.add('search_web')
+    return actions
+
+
 def citation_ids(text: str) -> set[str]:
     return set(re.findall(r"\[([WC][1-9][0-9]*)\]", text))
 
@@ -140,6 +167,7 @@ def review_payload(question: str, history: list[dict], sources: list[dict], turn
         for s in sources}
     errors = []
     actions = []
+    thread_reads = []
     tool_names = {}
     tool_arguments = {}
     for index, item in enumerate(history):
@@ -163,6 +191,11 @@ def review_payload(question: str, history: list[dict], sources: list[dict], turn
                             "arguments": tool_arguments.get(item.get('tool_call_id'), {})})
         if index >= turn_start and "error" in result:
             errors.append({"tool": tool_names.get(item.get("tool_call_id")), **result["error"]})
+        if isinstance(result.get('thread'), dict):
+            thread = result['thread']
+            thread_reads.append({'hole_id': thread.get('id'), 'reported_reply_count': thread.get('reply'),
+                **{key: result.get(key) for key in ('offset', 'raw_count', 'has_more', 'complete')},
+                'source_ids': [s['id'] for s in result.get('results', []) if s.get('id') in evidence]})
         source = evidence.get(result.get("source_id"))
         if source is not None and "text" in result:
             source.pop('snippet', None)
@@ -173,6 +206,7 @@ def review_payload(question: str, history: list[dict], sources: list[dict], turn
         "previous_answer_for_reference_only": next((item.get("content") for item in reversed(history[:turn_start])
             if item["role"] == "assistant" and not item.get("tool_calls")), None),
         "evidence": model_view(list(evidence.values())), "current_tool_errors": errors, "current_tool_actions": actions,
+        'thread_reads': thread_reads,
         "allowed_citation_ids": sorted(known),
         "output_constraints": {"max_characters": limit, "draft_characters": len(draft)},
         "validation_errors": answer_issues(draft, known, limit, sources), "draft": draft,

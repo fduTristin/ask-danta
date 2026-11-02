@@ -20,7 +20,7 @@ from .campus import CampusService, CampusBudget, CampusSearchRequest, CampusThre
 from .campus_auth import CampusError
 from .research import ResearchPlan, load_research_skill
 from .answer import (AnswerAudit, answer_issues, character_limit, citation_ids, review_payload,
-                     short_failure, model_history, retrieval_forbidden, audit_fact_errors)
+                     short_failure, model_history, retrieval_forbidden, audit_fact_errors, requested_actions)
 
 TOOLS = [{"type": "function", "function": {
     "name": "search_web", "description": "检索公开网页，返回标题、来源编号、链接、摘要和可用日期。",
@@ -113,7 +113,9 @@ class Agent:
         used_skill = False
         limit = character_limit(question)
         no_retrieval = retrieval_forbidden(question)
-        required_actions = set()
+        required_actions = requested_actions(question) if self.settings.answer_review_enabled else set()
+        if not campus_allowed:
+            required_actions.difference_update(('search_campus_posts', 'read_campus_thread'))
         attempted_actions = set()
 
         def available_tools():
@@ -127,6 +129,12 @@ class Agent:
         def publication_issues(text):
             return answer_issues(text, {s['id'] for s in sources if not s['is_mock'] and permitted_source(s)},
                                  limit, [s for s in sources if permitted_source(s)])
+
+        def missing_actions():
+            missing = required_actions - attempted_actions
+            if not campus_allowed:
+                missing.difference_update(('search_campus_posts', 'read_campus_thread'))
+            return missing
         answer = ""
         reviewed = False
         review_calls = 0
@@ -143,6 +151,8 @@ class Agent:
                   + ("\n" + warnings[0] if warnings else "")}
         if limit is not None:
             system["content"] += f"\n本轮回答硬性上限：{limit}个字符（包括标点、空白与引用编号）。精简表达，保留条件和引用。"
+        if required_actions:
+            system['content'] += '\n本轮用户明确要求的操作：' + ', '.join(sorted(required_actions)) + '。先完成操作；需要读取但没有命中时先检索。执行失败应说明原因，不用解释操作步骤替代执行。'
 
         async def within(awaitable, end: float):
             async with asyncio.timeout(max(0, end - time.monotonic())):
@@ -213,7 +223,7 @@ class Agent:
                         payload["corrections"] = corrections
                         payload["audit_format_error"] = audit_format_error
                         payload['required_actions'] = sorted(required_actions)
-                        payload['missing_actions'] = sorted(required_actions - attempted_actions)
+                        payload['missing_actions'] = sorted(missing_actions())
                         payload['retrieval_forbidden'] = no_retrieval
                         payload['fact_checks'] = fact_checks
                         if not needs_review:
@@ -252,10 +262,7 @@ class Agent:
                                     raise ModelError('model_invalid_evidence', '费用依据核对未通过，本轮未完成。')
                                 audit_format_error = ' '.join(fact_errors)
                                 continue
-                            if not no_retrieval:
-                                required_actions.update(name for name in audit.required_actions
-                                    if campus_allowed or name not in ('search_campus_posts', 'read_campus_thread'))
-                            missing = required_actions - attempted_actions
+                            missing = missing_actions()
                             if missing:
                                 if not review_tools or review_calls >= MAX_REVIEW_CALLS - 1:
                                     raise ModelError('required_actions_missing', '尚未完成要求的检索或读取，本轮未完成。')
@@ -276,6 +283,8 @@ class Agent:
                             # when the mechanical constraints already hold.
                             needs_review = self.settings.answer_review_enabled and not publication_issues(message.content or "")
                     if not message.tool_calls:
+                        if missing_actions():
+                            raise ModelError('required_actions_missing', '尚未完成要求的检索或读取，本轮未完成。')
                         answer = message.content or ""
                         issues = publication_issues(answer)
                         if issues:
