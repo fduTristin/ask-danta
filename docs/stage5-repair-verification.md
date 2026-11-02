@@ -1,5 +1,7 @@
 # 第五步追加修复记录
 
+> 后续主要问题修复与170项测试结果见 [第二轮收尾记录](stage5-closure-verification.md)。本文保留第一轮历史状态。
+
 日期：2026-11-02。对应用户要求：修复失效恢复、证据适用范围和输出约束；距离问题不做专项优化。
 
 本次实现了通用的证据核对与有限次修正，152 项隔离测试通过。保留此前失败，不能把程序返回 `complete`、存在引用或某次重试成功等同于所有质量问题消失。原始第五步记录见 [stage5-verification.md](stage5-verification.md)，本次脱敏回答及逐项人工评审见 [stage5-repair-samples.json](stage5-repair-samples.json)。

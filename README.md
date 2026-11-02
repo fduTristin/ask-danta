@@ -1,7 +1,7 @@
 # 校内信息研究助手 · Campus Agent
 
 面向本机单用户的校园信息调研应用，采用 React + TypeScript + Vite、FastAPI + HTTPX。
-已实现 [开发计划](plan.md) 的**第一至第四步**，并执行**第五步测试与演示及追加修复**：DeepSeek 多轮对话、网页搜索与正文读取、树洞登录与只读工具、跨来源引用、数据源权限和校园调研 Skill。152 项隔离测试通过，固定质量案例扩至 18 组。本轮修复认证失效恢复、证据适用范围、引用与字数约束，并验证真实调用链；距离题按用户要求不做专项优化。质量验收仍有漏补查、楼层编号表述及短帖逐字引用等残留，真实 token 过期刷新尚未主动触发。最新结果见 [第五步追加修复记录](docs/stage5-repair-verification.md) 与 [脱敏修复样本](docs/stage5-repair-samples.json)；此前失败和演示保留在 [原第五步验收记录](docs/stage5-verification.md)。
+已实现 [开发计划](plan.md) 的**第一至第四步**，并执行**第五步测试、演示与两轮修复**。170项隔离测试通过，固定质量案例共19组。已补齐明确检索/读取操作检查、复核补查、模型楼层ID隔离、完整帖子复制检查、费用与办理方式的对象核对，并验证真实API调用链。距离题不做专项适配。语义细节及上游可用性仍有边界，不宣称所有质量案例全通过；真实token过期刷新尚未主动触发。最新结果与历史失败见 [第五步收尾记录](docs/stage5-closure-verification.md) 和 [脱敏样本](docs/stage5-closure-samples.json)。
 
 ## 快速启动
 
@@ -255,7 +255,7 @@ python scripts/check_chat.py
 脚本拒绝把 mock 结果记为真实验收通过，只输出提供商、数量及来源 URL。也应在页面手动搜索并打开来源，核对标题、摘要和相关性。
 `check_chat.py` 会新建独立测试会话，要求模型实际搜索、验证最终回答包含来源编号，再追问校区条件，最后删除该测试会话；上游失败、无工具结果或 mock 来源都不算通过。两项脚本均支持 `--port`。
 
-质量评测与接口冒烟分开运行。17 组固定案例均调用真实 DeepSeek，其中 4 组使用真实 Tavily/公开网页，`live_policy` 还使用本项目树洞凭据；其余检索/正文为明确标注的合成情境。新增 `service_scope` 比较不同渠道价格与校区适用性，不针对某所学校硬编码答案。调用产生服务费用；无真实配置时不能把合成结果当作真实验收：
+质量评测与接口冒烟分开运行。19 组固定案例均调用真实 DeepSeek，其中 4 组使用真实 Tavily/公开网页，`live_policy` 还使用本项目树洞凭据；其余检索/正文为明确标注的合成情境。`service_scope`、`channel_fees`、`role_channels` 比较不同渠道价格、校区适用性与身份条件，不针对某所学校硬编码答案。调用产生服务费用；无真实配置时不能把合成结果当作真实验收：
 
 ```powershell
 uv run --frozen python scripts/evaluate_quality.py --label local-check
