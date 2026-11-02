@@ -214,6 +214,33 @@ def test_audit_of_simple_chat_does_not_require_retrieval():
         assert n == 2 and final["tool_calls"] == 0
 
 
+def test_final_audit_rejects_a_new_unsupported_claim_introduced_by_editing():
+    n = 0
+    def handler(request):
+        nonlocal n
+        if request.url.host == "api.tavily.com":
+            return search_result()
+        n += 1
+        if n == 1:
+            return completion(None, [call()])
+        if n == 2:
+            return completion("官网说明到江湾窗口 [W1]。" * 10)
+        if n == 3:
+            return completion('{"corrections": ["精简答案，资料未提及其他校区。"]}')
+        if n == 4:
+            return completion("其他校区禁止办理 [W1]。")
+        body = json.loads(request.content)
+        assert "tools" not in body
+        assert json.loads(body["messages"][-1]["content"])["draft"] == "其他校区禁止办理 [W1]。"
+        return completion('{"corrections": ["资料未说明其他校区，不支持禁止办理。"]}')
+    with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
+        session_id = client.post("/api/sessions").json()["session_id"]
+        final = events(client, session_id)[-1]
+        assert n == 5 and final["metrics"]["review_calls"] == 3
+        assert final["message"]["status"] == "incomplete"
+        assert "其他校区禁止办理" not in json.dumps(client.app.state.sessions[session_id].history, ensure_ascii=False)
+
+
 def test_review_correction_cannot_extend_total_deadline_or_commit_partial_turn():
     async def run():
         n = 0

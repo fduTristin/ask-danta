@@ -219,6 +219,10 @@ class Agent:
                             message = checked
                             metrics["answer_repairs"] += 1
                             corrections = []
+                            # An edit can introduce a new factual mistake. Spend
+                            # the remaining review call auditing the edited prose
+                            # when the mechanical constraints already hold.
+                            needs_review = self.settings.answer_review_enabled and not answer_issues(message.content or "", known, limit)
                     if not message.tool_calls:
                         answer = message.content or ""
                         issues = answer_issues(answer, known, limit)
