@@ -40,7 +40,7 @@ python scripts/dev.py
 | `MODEL_REASONING_EFFORT` | `low` | 开启思考时使用：`low` / `high` / `max` |
 | `MODEL_MAX_TOKENS` | `4096` | 模型输出上限，256–32768 |
 | `MODEL_TIMEOUT_SECONDS` | `45` | 单次模型请求的 HTTP 超时及整体截止时间 |
-| `ANSWER_REVIEW_ENABLED` | `true` | 对使用资料/引用的候选回答进行核对；若核对触发补查，最终稿再核对一次（最多两次） |
+| `ANSWER_REVIEW_ENABLED` | `true` | 使用独立证据核对断言，再按具体问题修订；每轮最多 3 次核对/改写，共享原总时长。关闭只跳过常规语义核对，引用和显式字数校验仍保留 |
 | `SEARCH_PROVIDER` | `mock` | `mock` 为离线样例；`tavily` 为真实搜索 |
 | `SEARCH_API_KEY` | 空 | Tavily API Key |
 | `SEARCH_MAX_RESULTS` | `5` | 单次最多 1–10 条结果 |
@@ -139,7 +139,9 @@ API 使用 [Tavily 官方 Search 接口](https://docs.tavily.com/documentation/a
 
 默认模型请求 45 秒、搜索/读取 15 秒，每轮最多 6 次工具尝试、总计 90 秒。为最终回答预留 `min(MODEL_TIMEOUT_SECONDS, REQUEST_BUDGET_SECONDS / 3)` 秒（默认 30 秒）；检索阶段达到截止时间或工具上限后，移除工具并要求模型基于已有资料说明缺口。最终模型调用和核对均受总时长约束；模型失败或总时长耗尽时，应用返回**明确标注未完成核对的已取回摘要**，不会伪装成完整研究结论。`MAX_CAMPUS_PAGES=3` 在单轮 Agent 中由搜索和详情工具共享，失败尝试也计页。页数耗尽后移除树洞工具，但剩余网页调用仍可执行；所有工具（包括调研计划）均计入 6 次尝试和 90 秒总时长。
 
-当前工作流：普通聊天或条件确认直接回答；需要查证时检索，结果无关或证据不足时改词补查；摘要缺少关键事实可读取已命中页面；有检索资料或引用的候选答案进行额外模型核对，必要时继续补查。如果核对触发了补查，最终稿再核对一次，此时禁止继续开启工具，最多两次核对均计入原总时长。不存在的来源编号和 mock 引用会被程序拒绝；引用是否真正支持结论仍依赖模型核对与质量评测，不是自动证明。
+当前工作流：普通聊天或条件确认直接回答；需要查证时检索，摘要缺少关键事实可读取已命中页面。发布前以结构化证据清单单独核对草稿，返回具体修正项，再进行改写。只有工具取回的摘要/正文是证据；旧回答仅供理解指代，失败提示不会产生来源编号。首次核对可在原预算内补查，后续核对与改写不再开启工具；每轮核对/改写合计最多 3 次，都计入原 90 秒总预算。
+
+程序检查来源编号及本轮明确的数字字数上限（如“最多100字”“不超过80字”“120字以内”），字数保守地包括标点、空白、格式符号和引用编号。核对或改写再次产生无效引用、超长回答时，在剩余次数内修正；仍失败则发布明确的未完成提示，不截断句子或仅替换引用来保留无依据结论。极短字数上限下用简短未完成标记，详细原因在消息 warnings 中。其他自然语言格式要求以及引用的语义支持仍依赖模型核对，不能视作自动事实证明。metrics 中的 `review_calls`、`answer_repairs` 可观察额外调用量。
 
 `read_web(source_id)` 只接受本会话已检索到的来源编号，如 `W1`。每次 DNS 解析和每一次重定向都要求地址为公开 HTTP(S)、标准端口且不含认证信息；拒绝本机、内网、保留地址、混合公私地址与 IPv4 映射地址。连接固定到通过校验的 IP，保持原 Host/TLS SNI，禁用环境代理，最多 3 次跳转。读取不携带模型/搜索密钥或浏览器凭据，只接受 HTML/纯文本，最多 1 MB 内容、12000 字符并标注截断。暂不支持 PDF、登录页面或依赖 JavaScript 的页面；HTML 提取可能仍带部分导航，不能宣称完整阅读所有正文。
 
@@ -249,13 +251,15 @@ python scripts/check_chat.py
 脚本拒绝把 mock 结果记为真实验收通过，只输出提供商、数量及来源 URL。也应在页面手动搜索并打开来源，核对标题、摘要和相关性。
 `check_chat.py` 会新建独立测试会话，要求模型实际搜索、验证最终回答包含来源编号，再追问校区条件，最后删除该测试会话；上游失败、无工具结果或 mock 来源都不算通过。两项脚本均支持 `--port`。
 
-质量评测与接口冒烟分开运行。16 组固定案例均调用真实 DeepSeek，其中 4 组使用真实 Tavily/公开网页，`live_policy` 还使用本项目树洞凭据；其余检索/正文为明确标注的合成情境。调用产生服务费用；无真实配置时不能把合成结果当作真实验收：
+质量评测与接口冒烟分开运行。17 组固定案例均调用真实 DeepSeek，其中 4 组使用真实 Tavily/公开网页，`live_policy` 还使用本项目树洞凭据；其余检索/正文为明确标注的合成情境。新增 `service_scope` 比较不同渠道价格与校区适用性，不针对某所学校硬编码答案。调用产生服务费用；无真实配置时不能把合成结果当作真实验收：
 
 ```powershell
 uv run --frozen python scripts/evaluate_quality.py --label local-check
 uv run --frozen python scripts/evaluate_quality.py --label thinking-check --thinking enabled --case distance
 uv run --frozen python scripts/evaluate_quality.py --label conflict-check --case source_conflict --case campus_unavailable
 uv run --frozen python scripts/evaluate_quality.py --label no-review-check --review disabled --case source_conflict --case post_injection
+uv run --frozen python scripts/evaluate_quality.py --label repair-check --exclude-case distance --exclude-case distance_decoy
+uv run --frozen python scripts/evaluate_quality.py --label recovery-repeat --case service_scope --case campus_unavailable --repeat 3
 uv run --frozen python scripts/summarize_quality.py .private/quality/local-check.json .private/quality/no-review-check.json
 ```
 

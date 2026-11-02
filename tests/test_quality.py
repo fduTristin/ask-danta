@@ -42,7 +42,10 @@ def test_review_can_correct_draft_and_sources_are_only_citations():
         if len(requests) == 2:
             return completion("保证24小时 [W2]")
         assert "保证24小时" in body["messages"][-1]["content"]
-        assert "发布前核对" in body["messages"][-1]["content"]
+        assert "发布前核对" in body["messages"][0]["content"]
+        assert json.loads(body["messages"][-1]["content"])["evidence"][0]["id"] == "W1"
+        if len(requests) == 3:
+            return completion(json.dumps({"corrections": ["24小时承诺无依据，改用材料齐全后3个工作日并引用W1。"]}))
         return completion("材料齐全后3个工作日 [W1]")
 
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
@@ -52,7 +55,7 @@ def test_review_can_correct_draft_and_sources_are_only_citations():
         assert "保证24小时" not in json.dumps(result, ensure_ascii=False)
         assert [s["id"] for s in result[-1]["message"]["sources"]] == ["W1"]
         assert len(result[-1]["session_sources"]) == 2
-        assert result[-1]["metrics"]["model_calls"] == 3
+        assert result[-1]["metrics"]["model_calls"] == 4
         assert "保证24小时" not in json.dumps(client.app.state.sessions[id].history, ensure_ascii=False)
 
 
@@ -73,13 +76,14 @@ def test_review_can_request_additional_search_within_same_budget():
             body = json.loads(request.content)
             assert "补查后仍猜测24小时" in body["messages"][-1]["content"]
             assert "tools" not in body
+            return completion(json.dumps({"corrections": ["删去无依据的24小时断言。"]}))
         return completion("窗口 [W1]")
 
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
         id = client.post("/api/sessions").json()["session_id"]
         result = events(client, id)
-        assert n == 5 and result[-1]["tool_calls"] == 2
-        assert sum(e["type"] == "review_start" for e in result) == 2
+        assert n == 6 and result[-1]["tool_calls"] == 2
+        assert sum(e["type"] == "review_start" for e in result) == 3
         assert "24小时" not in result[-1]["message"]["content"]
 
 
@@ -94,6 +98,8 @@ def test_repeated_query_does_not_call_upstream_twice():
         model_calls += 1
         if model_calls <= 2:
             return completion(None, [call(str(model_calls))])
+        if model_calls == 4:
+            return completion('{"corrections": []}')
         return completion("请去窗口 [W1]")
 
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
@@ -126,12 +132,15 @@ def test_thinking_protocol_usage_and_independent_timeouts():
         assert body["max_tokens"] == 6000
         assert body["reasoning_effort"] == "low"
         assert request.extensions["timeout"]["read"] == 35
-        response = completion(None, [call()]) if n == 1 else completion("窗口 [W1]")
+        response = completion(None, [call()]) if n == 1 else completion("窗口 [W1]" if n == 2 else '{"corrections": []}')
         payload = json.loads(response.content)
         if n == 1:
             payload["choices"][0]["message"]["reasoning_content"] = "private-model-reasoning"
-        else:
+        elif n == 2:
             assert any(m.get("reasoning_content") == "private-model-reasoning" for m in body["messages"])
+        else:
+            # Independent evidence review does not reuse model reasoning.
+            assert "private-model-reasoning" not in json.dumps(body)
         payload["usage"] = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
         return httpx.Response(200, json=payload)
 

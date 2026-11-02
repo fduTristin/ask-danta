@@ -22,6 +22,7 @@ from app.config import Settings
 from app.model import ModelService
 from app.search import SearchResponse, SearchResult, SearchService
 from app.reader import PageReader
+from app.answer import character_limit
 from app.campus import CampusService, redact
 from quality_fixtures import RESEARCH_CASES, ResearchSearch, ResearchReader, campus_response
 
@@ -111,6 +112,8 @@ async def main():
     parser.add_argument("--label", required=True)
     parser.add_argument("--thinking", choices=["enabled", "disabled"])
     parser.add_argument("--case", action="append", choices=[case["id"] for case in CASES])
+    parser.add_argument("--exclude-case", action="append", default=[], choices=[case["id"] for case in CASES])
+    parser.add_argument("--repeat", type=int, choices=range(1, 6), default=1)
     parser.add_argument("--review", choices=["enabled", "disabled"], help="Explicit ablation; normal default remains enabled")
     args = parser.parse_args()
     if not args.label.replace("-", "").replace("_", "").isalnum():
@@ -126,20 +129,22 @@ async def main():
     output = folder / (args.label + ".json")
     if output.exists():
         parser.error("label already exists; choose a new label to preserve earlier results")
-    for case in CASES:
-        if args.case and case["id"] not in args.case:
-            continue
-        with tempfile.TemporaryDirectory(prefix="campus-quality-") as temp:
-            case_config = config.model_copy(update={"campus_auth_file": Path(temp) / "tokens.json"})
-            if case.get("campus") in ("fixture", "expired"):
-                case_config.auth_path.write_text(json.dumps({"access": "synthetic-access", "refresh": "synthetic-refresh"}))
-            elif case.get("campus") == "live":
-                case_config = config
-            await evaluate_case(case, case_config, reports, output)
+    selected = [case for case in CASES if (not args.case or case["id"] in args.case) and case["id"] not in args.exclude_case]
+    if not selected:
+        parser.error("No cases selected")
+    for case in selected:
+        for repetition in range(1, args.repeat + 1):
+            with tempfile.TemporaryDirectory(prefix="campus-quality-") as temp:
+                case_config = config.model_copy(update={"campus_auth_file": Path(temp) / "tokens.json"})
+                if case.get("campus") in ("fixture", "expired"):
+                    case_config.auth_path.write_text(json.dumps({"access": "synthetic-access", "refresh": "synthetic-refresh"}))
+                elif case.get("campus") == "live":
+                    case_config = config
+                await evaluate_case(case, case_config, reports, output, repetition)
     print(str(output))
 
 
-async def evaluate_case(case: dict, config: Settings, reports: list[dict], output: Path) -> None:
+async def evaluate_case(case: dict, config: Settings, reports: list[dict], output: Path, repetition: int = 1) -> None:
     timestamp = datetime.now(timezone(timedelta(hours=8))).isoformat()
     async with httpx.AsyncClient(timeout=config.http_timeout_seconds, follow_redirects=False, trust_env=False) as client, \
             httpx.AsyncClient(transport=httpx.MockTransport(lambda r: campus_response(case["id"], r))) as fixture_client:
@@ -160,9 +165,10 @@ async def evaluate_case(case: dict, config: Settings, reports: list[dict], outpu
             start = time.monotonic()
             before = model.calls
             search_before = (search.attempts, search.successes)
-            events = [event async for event in agent.events(session, question, "all" if campus else "web")]
+            events = [event async for event in agent.events(session, question, case.get("source_mode", "all" if campus else "web"))]
             final = events[-1]
             turns.append({"question": question, "answer": final["message"]["content"],
+                "answer_characters": len(final["message"]["content"]), "answer_limit": character_limit(question),
                 "sources": deepcopy(session.sources), "model_calls": model.calls - before,
                 "search_requests": search.attempts - search_before[0] if case.get("live") else 0,
                 "search_successes": search.successes - search_before[1] if case.get("live") else 0,
@@ -173,13 +179,14 @@ async def evaluate_case(case: dict, config: Settings, reports: list[dict], outpu
                 "events": [{k: v for k, v in e.items() if k in ("type", "name", "error", "result")} for e in events if e["type"].startswith("tool_")],
             })
         report = {"case": case["id"], "timestamp": timestamp, "retrieval": "live Tavily + campus" if case.get("campus") == "live" else "live Tavily" if case.get("live") else "synthetic fixture; real model",
+            "repetition": repetition,
             "fixture_revision": 2, "manual_review": {"verdict": "pending", "reason": "逐项核对证据后填写评审文档；不自动以引用数或状态打分。"},
             "model": config.model_name, "thinking": getattr(config, "model_thinking", "disabled"),
             "settings": {key: getattr(config, key) for key in ("model_reasoning_effort", "model_max_tokens", "model_timeout_seconds", "search_depth", "max_tool_calls", "request_budget_seconds", "answer_review_enabled")},
             "expected": case["expected"], "turns": turns}
         reports.append(private_safe_report(report) if case.get("campus") == "live" else report)
         output.write_text(json.dumps(reports, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"{case['id']}: {sum(t['elapsed_seconds'] for t in turns):.2f}s, model calls={model.calls}", flush=True)
+        print(f"{case['id']}[{repetition}]: {sum(t['elapsed_seconds'] for t in turns):.2f}s, model calls={model.calls}", flush=True)
 
 
 if __name__ == "__main__":

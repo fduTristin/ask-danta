@@ -289,7 +289,12 @@ def test_mock_sources_remain_labelled_in_tool_context_and_final():
         if count == 1:
             return completion(None, [call()])
         tool = json.loads(json.loads(request.content)["messages"][-1]["content"])
-        assert tool["is_mock"] and tool["results"][0]["is_mock"]
+        if count == 2:
+            assert tool["is_mock"] and tool["results"][0]["is_mock"]
+        else:
+            assert tool["evidence"][0]["is_mock"]
+            assert tool["allowed_citation_ids"] == []
+            return completion('{"corrections": []}')
         return completion("这是合成样例，无法核实。")
 
     config = Settings(_env_file=None, model_api_key="model-secret", search_provider="mock")
@@ -298,3 +303,4 @@ def test_mock_sources_remain_labelled_in_tool_context_and_final():
         result = events(client, id)[-1]
         assert result["session_sources"][0]["is_mock"]
         assert result["message"]["sources"] == []
+        assert result["message"]["status"] == "complete"

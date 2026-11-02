@@ -9,6 +9,10 @@ POLICY = "合成官方通知（2026-10-01）：演示大学江湾校区在读证
 EXPERIENCE = "合成个人经验（2024-05-01）：我在江湾校区交齐材料后当天取到证明。这是一次经历，不是时限承诺。"
 
 RESEARCH_CASES = [
+    {"id": "service_scope", "campus": "fixture", "source_mode": "web", "questions": [
+        "虚构演示大学情境：只用公开网页，比较纸质与电子在读证明的价格和办理渠道，最多120字。",
+        "我现在在乙校区，前面的价格和办理时段都能直接套用吗？只用已有证据，最多80字。",
+    ], "expected": "纸质8元/份，电子版可下载但费用未说明；甲校区受理时段不能据此认定适用于或不适用于乙校区。两轮分别不超过120/80字符。"},
     {"id": "policy_experience", "campus": "fixture", "questions": [
         "在虚构演示大学情境中，我是江湾校区研究生。请对照官方在读证明要求与树洞经验，读取命中帖子上下文，说明材料、时限及是否保证当天办好，附引用。",
         "我改到枫林校区了。刚才的办理地点和时限可以直接套用吗？只依据已有资料简短回答，不再检索。",
@@ -37,6 +41,10 @@ class ResearchSearch:
         self.case_id = case_id
 
     async def search(self, query: str) -> SearchResponse:
+        if self.case_id == "service_scope":
+            return SearchResponse(query=query, provider="tavily", is_mock=False, notice=NOTICE, results=[
+                SearchResult(title="合成：演示大学证明渠道说明", url="https://example.org/synthetic/channels",
+                    snippet="虚构官方说明：本校在校研究生纸质学籍证明每份8元，可线上下单后到终端打印。电子证明可通过电子证明服务下载，费用未说明。甲校区受理时段为工作日9至12时，乙校区时段及其适用情况未说明。")])
         results = [SearchResult(title="合成：演示大学2026江湾证明办理通知",
             url="https://example.org/synthetic/policy-2026", snippet=POLICY, published_at="2026-10-01")]
         if self.case_id == "source_conflict":

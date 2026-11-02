@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -15,10 +14,11 @@ from .config import Settings
 from .model import ModelError, ModelService
 from .search import SearchError, SearchRequest, SearchService
 from .reader import PageReader, ReadRequest
-from .prompts import SYSTEM, REVIEW
+from .prompts import SYSTEM, REVIEW, AUDIT
 from .campus import CampusService, CampusBudget, CampusSearchRequest, CampusThreadRequest
 from .campus_auth import CampusError
 from .research import ResearchPlan, load_research_skill
+from .answer import AnswerAudit, answer_issues, character_limit, citation_ids, review_payload, short_failure
 
 TOOLS = [{"type": "function", "function": {
     "name": "search_web", "description": "检索公开网页，返回标题、来源编号、链接、摘要和可用日期。",
@@ -42,10 +42,6 @@ PLAN_TOOL = {"type": "function", "function": {
 ARGUMENTS = {"search_web": SearchRequest, "read_web": ReadRequest,
              "search_campus_posts": CampusSearchRequest, "read_campus_thread": CampusThreadRequest,
              "plan_research": ResearchPlan}
-
-
-def citation_ids(text: str) -> set[str]:
-    return set(re.findall(r"\[([WC][1-9][0-9]*)\]", text))
 
 
 class ChatRequest(BaseModel):
@@ -110,6 +106,7 @@ class Agent:
         campus_budget = CampusBudget(self.settings.max_campus_pages)
         plan: dict | None = None
         used_skill = False
+        limit = character_limit(question)
 
         def available_tools():
             return [*TOOLS, PLAN_TOOL, *(CAMPUS_TOOLS if campus_allowed and campus_budget.pages < campus_budget.max_pages else [])]
@@ -124,11 +121,14 @@ class Agent:
         attempted: set[tuple[str, str]] = set()
         metrics = {"model_calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
                    "usage_reported_calls": 0, "cache_usage_reported_calls": 0,
-                   "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 0}
+                   "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 0,
+                   "review_calls": 0, "answer_repairs": 0}
         system = {"role": "system", "content": SYSTEM + "\n当前日期：" + datetime.now(timezone(timedelta(hours=8))).date().isoformat()
                   + "\n本轮数据源权限：" + ("公开网页与树洞只读工具。" if campus_allowed else "仅公开网页；不得调用树洞工具或引用此前树洞资料。")
                   + "\n已加载 Skill：" + self.skill.name + "\n适用条件：" + self.skill.description + "\n" + self.skill.instructions
                   + ("\n" + warnings[0] if warnings else "")}
+        if limit is not None:
+            system["content"] += f"\n本轮回答硬性上限：{limit}个字符（包括标点、空白与引用编号）。精简表达，保留条件和引用。"
 
         async def within(awaitable, end: float):
             async with asyncio.timeout(max(0, end - time.monotonic())):
@@ -170,29 +170,62 @@ class Agent:
                         messages.append({"role": "system", "content": warnings[-1] + "请立即回答，明确未核实部分，不再调用工具。简单事实题只给有证据的答案或简短缺口说明，不展开无关背景。"})
                     yield {"type": "model_start", "message": "正在整理回答…" if limited else "正在理解问题和已有资料…"}
                     message = await complete(messages, [] if limited else available_tools())
-                    if (not message.tool_calls and review_calls < 2 and self.settings.answer_review_enabled
-                            and (current_sources or citation_ids(message.content or ""))):
+                    needs_review = self.settings.answer_review_enabled and bool(current_sources or citation_ids(message.content or ""))
+                    known = {source["id"] for source in sources if not source["is_mock"] and permitted_source(source)}
+                    corrections = []
+                    while not message.tool_calls and review_calls < 3:
+                        issues = answer_issues(message.content or "", known, limit)
+                        if not needs_review and not issues and not corrections:
+                            break
+                        # No real evidence can repair a fabricated factual citation.
+                        if not needs_review and not known and limit is None and not corrections:
+                            break
                         reviewed = True
                         review_calls += 1
+                        metrics["review_calls"] = review_calls
                         yield {"type": "review_start", "message": "正在核对答案是否切题、引用是否支持结论…"}
-                        # The draft is never committed or displayed. The reviewer
-                        # can use the remaining tool budget to fill evidence gaps.
-                        # If the first check requested more evidence, check the
-                        # resulting answer too. This last check cannot reopen
-                        # research, so both review cost and the loop are bounded.
-                        review_tools = [] if review_calls == 2 or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else available_tools()
-                        message = await complete([*messages, {"role": "system", "content": REVIEW + json.dumps({"draft": message.content}, ensure_ascii=False)}], review_tools)
-                        if not review_tools and message.tool_calls:
+                        # A separate audit identifies unsupported assertions before
+                        # editing. At most three review/edit calls share the original
+                        # deadline; only the first audit can reopen retrieval.
+                        review_tools = [] if not needs_review or issues or review_calls > 1 or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else available_tools()
+                        payload = review_payload(question, history, [s for s in sources if permitted_source(s)],
+                                                 len(base_history), message.content or "", limit)
+                        payload["runtime_notices"] = warnings
+                        payload["corrections"] = corrections
+                        checked = await complete([
+                            {"role": "system", "content": REVIEW + (AUDIT if needs_review else "\n请根据 corrections 和 validation_errors 修订答案，直接输出最终正文，不输出 JSON。")},
+                            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                        ], review_tools)
+                        if not review_tools and checked.tool_calls:
                             raise ModelError("model_ignored_review", "模型未按最终核对要求结束工具调用。")
+                        if checked.tool_calls:
+                            message = checked
+                            break
+                        if needs_review:
+                            try:
+                                corrections = AnswerAudit.model_validate_json(checked.content).corrections
+                            except ValidationError:
+                                raise ModelError("model_invalid_review", "模型核对结果格式无效，本轮未能完成回答。") from None
+                            needs_review = False
+                            if (corrections or issues) and review_calls == 3:
+                                raise ModelError("answer_review_incomplete", "答案仍需修正，但本轮核对预算已用完。")
+                        else:
+                            message = checked
+                            metrics["answer_repairs"] += 1
+                            corrections = []
                     if not message.tool_calls:
                         answer = message.content or ""
-                        known = {source["id"] for source in sources if not source["is_mock"] and permitted_source(source)}
-                        if citation_ids(answer) - known:
+                        issues = answer_issues(answer, known, limit)
+                        if issues:
                             failed = True
-                            warnings.append("回答引用了不存在或合成的来源，未发布该候选答案。")
+                            warnings.append("回答引用了不存在或合成的来源，未发布该候选答案。" if any(i["code"] == "unknown_citations" for i in issues)
+                                            else "回答仍超出本轮字数上限，未发布该候选答案。")
                             answer = fallback(warnings[-1], current_sources)
                         if limited:
                             answer += "\n\n" + warnings[-1]
+                        if limit is not None and len(answer) > limit:
+                            failed = True
+                            answer = short_failure(limit)
                         history.append(message.wire())
                         history[-1]["content"] = answer
                         break
@@ -293,6 +326,8 @@ class Agent:
                 failed = True
                 yield {"type": "error", "error": {"code": code, "message": reason}}
                 answer = fallback(reason, current_sources)
+                if limit is not None and len(answer) > limit:
+                    answer = short_failure(limit)
                 history.append({"role": "assistant", "content": answer})
             # All tool-call messages are paired before reaching this commit.
             new_turn = history[len(base_history):]
