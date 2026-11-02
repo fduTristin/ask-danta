@@ -11,10 +11,51 @@ async function ask(page: Page, text: string) {
   await expect(page.locator('.assistant')).toHaveCount(1);
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEmpty();
 }
+async function chooseSource(page: Page, name: string) {
+  await page.getByRole('button', { name: /^搜索范围：/ }).click();
+  await page.getByRole('menuitemradio', { name, exact: true }).click();
+}
 test.beforeEach(async ({ page, request }) => {
   await clean(request);
   await page.goto('/');
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEnabled();
+});
+
+test('source menu supports keyboard selection and stays within desktop and narrow viewports', async ({ page }) => {
+  const trigger = page.getByRole('button', { name: /^搜索范围：/ });
+  await trigger.focus();
+  await trigger.press('ArrowDown');
+  await expect(page.getByRole('menuitemradio', { name: '自动选择' })).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(page.getByRole('menuitemradio', { name: '网页 + 树洞', exact: true })).toBeFocused();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: '搜索范围：仅网页', exact: true })).toBeFocused();
+  for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }, { width: 320, height: 450 }]) {
+    await page.setViewportSize(viewport);
+    await trigger.click();
+    const menu = page.getByRole('menu', { name: '搜索范围' });
+    await expect(menu).toBeVisible();
+    await expect(page.getByRole('menuitemradio', { name: '仅网页', exact: true })).toHaveAttribute('aria-checked', 'true');
+    const bounds = (await menu.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+    if (viewport.width > 320) await page.screenshot({ path: `../.private/verification/stage6/source-picker-${viewport.width > 760 ? 'desktop' : 'mobile'}.png` });
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  }
+  await trigger.click();
+  await page.mouse.click(315, 10);
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(trigger).toHaveText('仅网页');
+  await trigger.click();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(trigger).not.toBeFocused();
 });
 
 test('desktop layout, cited Markdown, refresh, rename and deletion', async ({ page, context }) => {
@@ -53,14 +94,14 @@ test('desktop layout, cited Markdown, refresh, rename and deletion', async ({ pa
 
 test('drafts and source preference stay with their conversation', async ({ page }) => {
   await ask(page, '第一段聊天');
-  await page.getByRole('combobox', { name: '允许使用的数据源' }).selectOption('web');
+  await chooseSource(page, '仅网页');
   await page.getByRole('textbox', { name: '你的问题或追问' }).fill('未发送的追问');
   await page.getByRole('button', { name: '新对话', exact: true }).click();
-  await expect(page.getByRole('combobox')).toHaveValue('auto');
+  await expect(page.getByRole('button', { name: /^搜索范围：自动/ })).toBeVisible();
   await ask(page, '第二段聊天');
   await page.getByRole('button', { name: '第一段聊天', exact: true }).click();
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toHaveValue('未发送的追问');
-  await expect(page.getByRole('combobox')).toHaveValue('web');
+  await expect(page.getByRole('button', { name: '搜索范围：仅网页', exact: true })).toBeVisible();
   await expect(page.locator('.user')).toHaveCount(1);
 });
 
@@ -68,6 +109,7 @@ test('switching cancels a running answer and preserves its question', async ({ p
   await page.getByRole('textbox', { name: '你的问题或追问' }).fill('等待合成回答');
   await page.getByRole('button', { name: '发送', exact: true }).click();
   await expect(page.getByRole('button', { name: '停止回答' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^搜索范围：/ })).toBeDisabled();
   await page.getByRole('button', { name: '新对话', exact: true }).click();
   await page.getByRole('button', { name: '停止并切换', exact: true }).click();
   await expect(page.getByRole('heading', { name: '今天，有什么校园问题？' })).toBeVisible();
@@ -177,12 +219,12 @@ test('clear persists and login success enables a consented data-source choice', 
   await expect(page.locator('.login-success')).toBeVisible();
   await expect(page.getByLabel('树洞密码')).toHaveCount(0);
   await page.getByRole('button', { name: '关闭设置', exact: true }).click();
-  await page.getByRole('combobox').selectOption('all');
+  await chooseSource(page, '网页 + 树洞');
   await page.getByRole('button', { name: '允许使用', exact: true }).click();
-  await expect(page.getByRole('combobox')).toHaveValue('all');
-  await page.getByRole('combobox').selectOption('web');
+  await expect(page.getByRole('button', { name: '搜索范围：网页 + 树洞', exact: true })).toBeVisible();
+  await chooseSource(page, '仅网页');
   await page.reload();
-  await expect(page.getByRole('combobox')).toHaveValue('web');
+  await expect(page.getByRole('button', { name: '搜索范围：仅网页', exact: true })).toBeVisible();
   const storage = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
   expect(storage).not.toContain('synthetic-password');
   expect(storage).not.toContain('synthetic-access');

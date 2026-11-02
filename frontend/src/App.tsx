@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Ellipsis, Globe, PanelLeft, Pencil, Settings2, Square, SquarePen, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Ellipsis, PanelLeft, Pencil, Settings2, Square, SquarePen, Trash2 } from 'lucide-react';
 import { Answer } from './Answer';
 import { CampusLogin } from './CampusLogin';
 import { Modal } from './Modal';
+import { SourcePicker } from './SourcePicker';
 import { api, ApiError, errorText } from './api';
 import type { Health, Message, Session, SourceMode, Summary } from './api';
 
@@ -311,7 +312,7 @@ export function App() {
           {info && <p className="notice" role="status">{info}</p>}
           <form className="composer" onSubmit={event => { event.preventDefault(); void send(); }}>
             <textarea ref={textarea} rows={2} aria-label="你的问题或追问" placeholder="向旦挞提问…" maxLength={8000} value={input} disabled={activeBusy || working || !ready} onChange={event => editInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); void send(); } }} />
-            <div className="composer-bar"><div className="source-picker"><Globe /><select aria-label="允许使用的数据源" value={mode} disabled={activeBusy || working} onChange={event => void changeMode(event.target.value as SourceMode)}><option value="auto">自动：{campusReady ? '网页 + 树洞' : '仅网页'}</option><option value="web">仅网页</option><option value="all">网页 + 树洞</option></select></div>
+            <div className="composer-bar"><SourcePicker value={mode} campusReady={campusReady} disabled={activeBusy || working || !ready} onChange={next => void changeMode(next)} />
               {activeBusy ? <button type="button" className="send" aria-label="停止回答" title="停止回答" disabled={working} onClick={() => { setWorking(true); void stop().catch(cause => setError(errorText(cause))).finally(() => setWorking(false)); }}><Square /></button> : <button type="submit" className="send" aria-label="发送" title="发送（Enter）" disabled={!enabled || !ready || working || !input.trim()}><ArrowUp /></button>}
             </div>
           </form>
