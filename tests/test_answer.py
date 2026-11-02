@@ -160,7 +160,7 @@ def test_invalid_audit_can_retry_and_edit_within_the_same_review_budget():
         if n == 3:
             return completion("错误格式的核对输出，不应进入历史")
         body = json.loads(request.content)
-        assert "tools" not in body
+        assert ("tools" in body) == (n == 4)
         assert "错误格式的核对输出" not in json.dumps(body, ensure_ascii=False)
         payload = json.loads(body["messages"][-1]["content"])
         assert payload["audit_format_error"]
@@ -196,7 +196,9 @@ def test_audit_can_recover_a_skipped_lookup_without_question_specific_routing():
         if n == 3:
             return completion("官网窗口说明 [W1]")
         payload = json.loads(body["messages"][-1]["content"])
-        assert payload["current_tool_actions"] == [{"tool": "search_web", "status": "complete"}]
+        assert payload["current_tool_actions"][0]["tool"] == "search_web"
+        assert payload["current_tool_actions"][0]["status"] == "complete"
+        assert payload["current_tool_actions"][0]["arguments"]["query"]
         return completion('{"corrections": []}')
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
         session_id = client.post("/api/sessions").json()["session_id"]
@@ -237,7 +239,7 @@ def test_final_audit_can_repair_a_new_unsupported_claim_introduced_by_editing():
         if n == 6:
             return completion("资料未说明其他校区的适用情况 [W1]。")
         body = json.loads(request.content)
-        assert "tools" not in body
+        assert "tools" in body
         assert json.loads(body["messages"][-1]["content"])["draft"] == "其他校区禁止办理 [W1]。"
         return completion('{"corrections": ["资料未说明其他校区，不支持禁止办理。"]}')
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:

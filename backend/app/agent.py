@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -18,7 +19,8 @@ from .prompts import SYSTEM, REVIEW, AUDIT
 from .campus import CampusService, CampusBudget, CampusSearchRequest, CampusThreadRequest
 from .campus_auth import CampusError
 from .research import ResearchPlan, load_research_skill
-from .answer import AnswerAudit, answer_issues, character_limit, citation_ids, review_payload, short_failure
+from .answer import (AnswerAudit, answer_issues, character_limit, citation_ids, review_payload,
+                     short_failure, model_history, retrieval_forbidden, audit_fact_errors)
 
 TOOLS = [{"type": "function", "function": {
     "name": "search_web", "description": "检索公开网页，返回标题、来源编号、链接、摘要和可用日期。",
@@ -29,7 +31,7 @@ TOOLS = [{"type": "function", "function": {
 }}]
 
 CAMPUS_TOOLS = [{"type": "function", "function": {
-    "name": "search_campus_posts", "description": "搜索获授权的树洞楼层，返回洞号、楼层 ID、正文、日期和来源编号。不是公开网页搜索。",
+    "name": "search_campus_posts", "description": "搜索获授权的树洞内容，返回洞号、正文、日期和引用编号。不提供楼层顺序或楼主身份。不是公开网页搜索。",
     "parameters": CampusSearchRequest.model_json_schema(),
 }}, {"type": "function", "function": {
     "name": "read_campus_thread", "description": "按洞号分页读取帖子元数据和楼层上下文；每次只读取一页，不代表完整帖子。",
@@ -70,7 +72,9 @@ def fallback(reason: str, sources: list[dict]) -> str:
     if actual:
         text += "\n\n已取得以下来源资料，尚未完成综合核对："
         for source in actual[-5:]:
-            text += f"\n\n[{source['id']}] {source['title']}\n{source['snippet'][:500]}"
+            text += f"\n\n[{source['id']}] {source['title']}"
+            if source.get('source') != 'campus':
+                text += '\n' + source['snippet'][:500]
     else:
         text += "\n\n尚无可用于核实本轮问题的真实资料。"
     return text + "\n\n资料可能不完整；可以缩小问题范围后继续追问。"
@@ -108,12 +112,21 @@ class Agent:
         plan: dict | None = None
         used_skill = False
         limit = character_limit(question)
+        no_retrieval = retrieval_forbidden(question)
+        required_actions = set()
+        attempted_actions = set()
 
         def available_tools():
+            if no_retrieval:
+                return []
             return [*TOOLS, PLAN_TOOL, *(CAMPUS_TOOLS if campus_allowed and campus_budget.pages < campus_budget.max_pages else [])]
 
         def permitted_source(source):
             return campus_evidence_allowed or source.get("source") != "campus"
+
+        def publication_issues(text):
+            return answer_issues(text, {s['id'] for s in sources if not s['is_mock'] and permitted_source(s)},
+                                 limit, [s for s in sources if permitted_source(s)])
         answer = ""
         reviewed = False
         review_calls = 0
@@ -136,6 +149,8 @@ class Agent:
                 return await awaitable
 
         async def complete(messages, tools):
+            if metrics['model_calls'] >= self.settings.max_tool_calls + MAX_REVIEW_CALLS + 1:
+                raise ModelError('model_budget_exhausted', '本轮模型调用预算已用完。')
             metrics["model_calls"] += 1
             message = await within(self.model.complete(messages, tools), deadline)
             for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
@@ -161,7 +176,7 @@ class Agent:
                     if limited:
                         warnings.append("已达到工具调用或检索时间预算，停止检索；以下回答仅基于已有资料，可能存在缺口。")
                         yield {"type": "budget", "message": warnings[-1]}
-                    messages = [system, *history]
+                    messages = [system, *model_history(history)]
                     if reviewed:
                         messages.append({"role": "system", "content":
                             "这是发布前核对触发补查后的回答。请结合新增证据再次自查切题性和每个关键数值的依据；"
@@ -174,13 +189,14 @@ class Agent:
                     needs_review = self.settings.answer_review_enabled
                     known = {source["id"] for source in sources if not source["is_mock"] and permitted_source(source)}
                     corrections = []
+                    fact_checks = []
                     audit_format_error = None
                     while not message.tool_calls and review_calls < MAX_REVIEW_CALLS:
-                        issues = answer_issues(message.content or "", known, limit)
+                        issues = publication_issues(message.content or "")
                         if not needs_review and not issues and not corrections:
                             break
                         # No real evidence can repair a fabricated factual citation.
-                        if not needs_review and not known and limit is None and not corrections:
+                        if not needs_review and not known and limit is None and not corrections and not issues:
                             break
                         reviewed = True
                         review_calls += 1
@@ -188,13 +204,24 @@ class Agent:
                         yield {"type": "review_start", "message": "正在核对答案是否切题、引用是否支持结论…"}
                         # A separate audit identifies unsupported assertions before
                         # editing. At most four review/edit calls share the original
-                        # deadline; only the first audit can reopen retrieval.
-                        review_tools = [] if not needs_review or issues or review_calls > 1 or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else available_tools()
+                        # deadline. Audits may reopen retrieval while leaving a
+                        # review call for the new evidence; edits cannot use tools.
+                        review_tools = [] if not needs_review or review_calls >= MAX_REVIEW_CALLS or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else available_tools()
                         payload = review_payload(question, history, [s for s in sources if permitted_source(s)],
                                                  len(base_history), message.content or "", limit)
                         payload["runtime_notices"] = warnings
                         payload["corrections"] = corrections
                         payload["audit_format_error"] = audit_format_error
+                        payload['required_actions'] = sorted(required_actions)
+                        payload['missing_actions'] = sorted(required_actions - attempted_actions)
+                        payload['retrieval_forbidden'] = no_retrieval
+                        payload['fact_checks'] = fact_checks
+                        if not needs_review:
+                            referenced = citation_ids(message.content or '')
+                            referenced.update(fact['source_id'] for fact in fact_checks)
+                            referenced.update(re.findall(r'(?<![A-Za-z0-9])[WC][1-9][0-9]*(?![A-Za-z0-9])', ' '.join(corrections)))
+                            if referenced:
+                                payload['evidence'] = [s for s in payload['evidence'] if s['id'] in referenced]
                         checked = await complete([
                             {"role": "system", "content": AUDIT if needs_review else REVIEW},
                             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
@@ -202,17 +229,41 @@ class Agent:
                         if not review_tools and checked.tool_calls:
                             raise ModelError("model_ignored_review", "模型未按最终核对要求结束工具调用。")
                         if checked.tool_calls:
+                            # This call routed retrieval, rather than auditing an
+                            # answer. Tool and total model budgets still apply.
+                            review_calls -= 1
+                            metrics['review_calls'] = review_calls
+                            metrics['review_tool_rounds'] = metrics.get('review_tool_rounds', 0) + 1
                             message = checked
                             break
                         if needs_review:
                             try:
-                                corrections = AnswerAudit.model_validate_json(checked.content).corrections
+                                audit = AnswerAudit.model_validate_json(checked.content)
+                                corrections = audit.corrections
                             except ValidationError:
                                 if review_calls < MAX_REVIEW_CALLS:
                                     audit_format_error = "仅返回 corrections 字符串数组，不要附加正文或代码块。"
                                     metrics["review_format_retries"] = metrics.get("review_format_retries", 0) + 1
                                     continue
                                 raise ModelError("model_invalid_review", "模型核对结果格式无效，本轮未能完成回答。") from None
+                            fact_errors = audit_fact_errors(audit, payload)
+                            if fact_errors:
+                                if review_calls >= MAX_REVIEW_CALLS:
+                                    raise ModelError('model_invalid_evidence', '费用依据核对未通过，本轮未完成。')
+                                audit_format_error = ' '.join(fact_errors)
+                                continue
+                            if not no_retrieval:
+                                required_actions.update(name for name in audit.required_actions
+                                    if campus_allowed or name not in ('search_campus_posts', 'read_campus_thread'))
+                            missing = required_actions - attempted_actions
+                            if missing:
+                                if not review_tools or review_calls >= MAX_REVIEW_CALLS - 1:
+                                    raise ModelError('required_actions_missing', '尚未完成要求的检索或读取，本轮未完成。')
+                                corrections = ['必须先执行缺失操作：' + ', '.join(sorted(missing))]
+                                needs_review = True
+                                continue
+                            metrics['facts_checked'] = metrics.get('facts_checked', 0) + len(audit.facts)
+                            fact_checks = [fact.model_dump() for fact in audit.facts]
                             needs_review = False
                             if (corrections or issues) and review_calls == MAX_REVIEW_CALLS:
                                 raise ModelError("answer_review_incomplete", "答案仍需修正，但本轮核对预算已用完。")
@@ -223,15 +274,16 @@ class Agent:
                             # An edit can introduce a new factual mistake. Spend
                             # the remaining review call auditing the edited prose
                             # when the mechanical constraints already hold.
-                            needs_review = self.settings.answer_review_enabled and not answer_issues(message.content or "", known, limit)
+                            needs_review = self.settings.answer_review_enabled and not publication_issues(message.content or "")
                     if not message.tool_calls:
                         answer = message.content or ""
-                        issues = answer_issues(answer, known, limit)
+                        issues = publication_issues(answer)
                         if issues:
                             failed = True
                             warnings.append("回答引用了不存在或合成的来源，未发布该候选答案。" if any(i["code"] == "unknown_citations" for i in issues)
-                                            else "回答仍超出本轮字数上限，未发布该候选答案。")
-                            answer = fallback(warnings[-1], current_sources)
+                                            else "回答仍复制了完整帖子，未发布该候选答案。" if any(i['code'] == 'whole_post_copy' for i in issues)
+                                            else "回答仍超出字数上限，未发布该候选答案。")
+                            answer = fallback(warnings[-1], [s for s in sources if permitted_source(s)])
                         if limited:
                             answer += "\n\n" + warnings[-1]
                         if limit is not None and len(answer) > limit:
@@ -253,6 +305,8 @@ class Agent:
                             calls += 1  # Invalid/unknown attempts also consume budget.
                             if call.function.name not in ARGUMENTS:
                                 raise SearchError("unknown_tool", "不允许执行此工具。")
+                            if no_retrieval:
+                                raise SearchError('retrieval_not_allowed', '用户要求只用已有证据，本轮不执行新检索或读取。')
                             if call.function.name in ("search_campus_posts", "read_campus_thread") and not campus_allowed:
                                 raise SearchError("source_not_allowed", "本轮未授权或无法使用树洞，只能使用公开网页。")
                             try:
@@ -263,6 +317,7 @@ class Agent:
                             if signature in attempted:
                                 raise SearchError("duplicate_tool_call", "本轮已尝试相同调用，请使用已有结果、换关键词或说明缺口。")
                             attempted.add(signature)
+                            attempted_actions.add(call.function.name)
                             used_skill = True
                             if isinstance(args, ResearchPlan):
                                 if "campus" in args.sources and not campus_allowed:
@@ -336,7 +391,7 @@ class Agent:
                 warnings.append(reason)
                 failed = True
                 yield {"type": "error", "error": {"code": code, "message": reason}}
-                answer = fallback(reason, current_sources)
+                answer = fallback(reason, [s for s in sources if permitted_source(s)])
                 if limit is not None and len(answer) > limit:
                     answer = short_failure(limit)
                 history.append({"role": "assistant", "content": answer})

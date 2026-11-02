@@ -9,6 +9,10 @@ POLICY = "合成官方通知（2026-10-01）：演示大学江湾校区在读证
 EXPERIENCE = "合成个人经验（2024-05-01）：我在江湾校区交齐材料后当天取到证明。这是一次经历，不是时限承诺。"
 
 RESEARCH_CASES = [
+    {"id": "channel_fees", "campus": "fixture", "source_mode": "web", "questions": [
+        "虚构演示大学情境：请查档案证明的纸质和电子渠道费用、申请对象，最多120字。",
+        "电子版也要交这笔钱吗？只用已有资料，最多60字。",
+    ], "expected": "纸质档案证明12元/份，仅在校生线下领取；电子版在校生和毕业生均可免费下载，不能泛称档案证明都收费。两轮120/60字符。"},
     {"id": "service_scope", "campus": "fixture", "source_mode": "web", "questions": [
         "虚构演示大学情境：只用公开网页，比较纸质与电子在读证明的价格和办理渠道，最多120字。",
         "我现在在乙校区，前面的价格和办理时段都能直接套用吗？只用已有证据，最多80字。",
@@ -41,6 +45,10 @@ class ResearchSearch:
         self.case_id = case_id
 
     async def search(self, query: str) -> SearchResponse:
+        if self.case_id == "channel_fees":
+            return SearchResponse(query=query, provider="tavily", is_mock=False, notice=NOTICE, results=[
+                SearchResult(title="合成：档案证明服务说明", url="https://example.org/synthetic/archive-fees",
+                    snippet="演示大学档案证明：纸质版12元/份，仅在校生可申请并线下领取。电子版由在校生和毕业生在线免费下载，不收取纸质版费用。")])
         if self.case_id == "service_scope":
             return SearchResponse(query=query, provider="tavily", is_mock=False, notice=NOTICE, results=[
                 SearchResult(title="合成：演示大学证明渠道说明", url="https://example.org/synthetic/channels",
