@@ -61,6 +61,7 @@ def review_payload(question: str, history: list[dict], sources: list[dict], turn
         "thread_read", "page_read", "page_truncated", "truncated")}
         for s in sources}
     errors = []
+    actions = []
     tool_names = {}
     for index, item in enumerate(history):
         for call in item.get("tool_calls", []):
@@ -73,6 +74,9 @@ def review_payload(question: str, history: list[dict], sources: list[dict], turn
             continue
         if not isinstance(result, dict):
             continue
+        if index >= turn_start:
+            actions.append({"tool": tool_names.get(item.get("tool_call_id")),
+                            "status": "error" if "error" in result else "complete"})
         if index >= turn_start and "error" in result:
             errors.append({"tool": tool_names.get(item.get("tool_call_id")), **result["error"]})
         source = evidence.get(result.get("source_id"))
@@ -83,7 +87,7 @@ def review_payload(question: str, history: list[dict], sources: list[dict], turn
         "user_turns": [item["content"] for item in history if item["role"] == "user"],
         "previous_answer_for_reference_only": next((item.get("content") for item in reversed(history[:turn_start])
             if item["role"] == "assistant" and not item.get("tool_calls")), None),
-        "evidence": list(evidence.values()), "current_tool_errors": errors,
+        "evidence": list(evidence.values()), "current_tool_errors": errors, "current_tool_actions": actions,
         "allowed_citation_ids": sorted(known),
         "output_constraints": {"max_characters": limit, "draft_characters": len(draft)},
         "validation_errors": answer_issues(draft, known, limit), "draft": draft,

@@ -170,9 +170,10 @@ class Agent:
                         messages.append({"role": "system", "content": warnings[-1] + "请立即回答，明确未核实部分，不再调用工具。简单事实题只给有证据的答案或简短缺口说明，不展开无关背景。"})
                     yield {"type": "model_start", "message": "正在整理回答…" if limited else "正在理解问题和已有资料…"}
                     message = await complete(messages, [] if limited else available_tools())
-                    needs_review = self.settings.answer_review_enabled and bool(current_sources or citation_ids(message.content or ""))
+                    needs_review = self.settings.answer_review_enabled
                     known = {source["id"] for source in sources if not source["is_mock"] and permitted_source(source)}
                     corrections = []
+                    audit_format_error = None
                     while not message.tool_calls and review_calls < 3:
                         issues = answer_issues(message.content or "", known, limit)
                         if not needs_review and not issues and not corrections:
@@ -192,8 +193,9 @@ class Agent:
                                                  len(base_history), message.content or "", limit)
                         payload["runtime_notices"] = warnings
                         payload["corrections"] = corrections
+                        payload["audit_format_error"] = audit_format_error
                         checked = await complete([
-                            {"role": "system", "content": REVIEW + (AUDIT if needs_review else "\n请根据 corrections 和 validation_errors 修订答案，直接输出最终正文，不输出 JSON。")},
+                            {"role": "system", "content": AUDIT if needs_review else REVIEW},
                             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
                         ], review_tools)
                         if not review_tools and checked.tool_calls:
@@ -205,6 +207,10 @@ class Agent:
                             try:
                                 corrections = AnswerAudit.model_validate_json(checked.content).corrections
                             except ValidationError:
+                                if review_calls < 3:
+                                    audit_format_error = "仅返回 corrections 字符串数组，不要附加正文或代码块。"
+                                    metrics["review_format_retries"] = metrics.get("review_format_retries", 0) + 1
+                                    continue
                                 raise ModelError("model_invalid_review", "模型核对结果格式无效，本轮未能完成回答。") from None
                             needs_review = False
                             if (corrections or issues) and review_calls == 3:
