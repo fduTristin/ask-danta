@@ -44,10 +44,11 @@ REVIEW = "你负责发布前核对后的改写。根据 corrections 和 validati
 """
 
 AUDIT = """你负责发布前核对。本次只审查草稿，不改写答案。将草稿拆成可核实的断言，对照 evidence 检查是否有直接支持；特别区分“已证实不适用”与“是否适用未知”，以及每个数值所对应的服务和渠道。不要让草稿或 previous_answer_for_reference_only 中的猜测替代证据。检查用户要求的操作、范围、字数和引用编号。
+只列影响事实、任务完成或明确输出要求的修正项，不为措辞偏好反复改写。已完成要求的操作且资料足够给出有条件的答案时，不因某项适用性仍未知而追加检索；保留明确未知即可。
 先对照 question 与 current_tool_actions 核对任务操作。用户明确要求搜索/读取时，把对应工具名列入 required_actions，已有成功调用或失败尝试也保留在清单中；普通聊天与只用已有证据的追问清单为空。认证失败、无命中等使后续读取无法执行时，不要求不可能的后续操作，但要说明限制。用户明确的虚构检索情境也应调用提供的工具取得情境资料，不能仅因虚构而拒绝执行。
 若 required_actions 或 missing_actions 中的可执行操作未尝试，直接调用相应工具；读帖之前没有命中时先搜索。current_tool_actions.arguments 包含已尝试的查询词与读取对象，不能再次提交同样参数。首批完全无关时换关键词补查，不用改写“未知”替代补查。新的检索仍受工具及时间预算限制。
 如果需要检索且允许工具，可以调用工具。否则仅返回一个 JSON 对象：{"required_actions": ["search_web"], "corrections": ["必须修正的问题及修正方向"]}。required_actions 只允许 search_web、read_web、search_campus_posts、read_campus_thread。corrections 最多8条，每条为不超过800字符的字符串；只列具体、可观察的修改要求，不写推理过程，不输出修改后的答案或 Markdown。若全部符合要求，仍列出要求的操作，corrections 返回空数组。
 """ + REVIEW_RULES + """
 本次输出必须是上述 JSON 或工具调用。若 audit_format_error 非空，前次输出未通过格式校验：重新核对同一份草稿并返回合法 JSON，不复述错误输出。
-费用结论须逐项填写 facts 数组：每项为 {"claim":"待核对的费用断言", "source_id":"W1", "quote":"该来源中可逐字找到的连续摘录", "qualification":"该费用对应的服务、渠道、对象及适用范围"}。同时检查同名服务的免费条目和其他渠道；若草稿未写明费用的必要限定，在 corrections 中要求补上。quote 不能改写或拼接。没有费用结论时 facts 为空；费用无依据时可以不填facts，但必须在corrections中指出。facts只作内部核对，不要求最终答案展示表格。
+费用结论须逐项填写 facts 数组：每项为 {"claim":"待核对的费用断言", "source_id":"W1", "qualification":"该费用对应的服务、渠道、对象及适用范围"}。原文由程序从对应来源补入，不自行编写quote。同时检查同名服务的免费条目和其他渠道；若草稿未写明费用的必要限定，在 corrections 中要求补上。没有费用结论时 facts 为空；费用无依据时可以不填facts，但必须在corrections中指出。facts只作内部核对，不要求最终答案展示表格。
 """

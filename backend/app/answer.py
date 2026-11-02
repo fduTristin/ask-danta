@@ -12,7 +12,7 @@ class FactCheck(BaseModel):
     model_config = ConfigDict(extra='forbid')
     claim: str = Field(min_length=1, max_length=400)
     source_id: str = Field(pattern=r'^[WC][1-9][0-9]*$')
-    quote: str = Field(min_length=1, max_length=1600)
+    quote: str = Field(default='', max_length=1600)
     qualification: str = Field(min_length=1, max_length=400)
 
 
@@ -29,10 +29,13 @@ def audit_fact_errors(audit: AnswerAudit, payload: dict) -> list[str]:
     if re.search(r'\d+(?:\.\d+)?\s*元|免费', payload['draft']) and not audit.facts and not audit.corrections:
         errors.append('回答包含费用结论，必须提供facts核对记录或明确指出无依据的费用断言。')
     for fact in audit.facts:
-        source = evidence.get(fact.source_id, {})
-        text = source.get('page_text', source.get('snippet', ''))
-        if not normalized_text(fact.quote) or normalized_text(fact.quote) not in normalized_text(text):
-            errors.append('facts中的原文摘录必须可在对应来源正文或摘要中找到，不得把草稿当作原文。')
+        source = evidence.get(fact.source_id)
+        if source is None or source.get('is_mock'):
+            errors.append('facts必须指向实际取回的非模拟来源编号。')
+        else:
+            # The application supplies the excerpt. Never promote a model's
+            # paraphrase to a quotation or fail a valid answer for quote syntax.
+            fact.quote = source.get('page_text', source.get('snippet', ''))[:1600]
     return errors
 
 

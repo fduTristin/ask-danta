@@ -216,7 +216,7 @@ class Agent:
                         # editing. At most four review/edit calls share the original
                         # deadline. Audits may reopen retrieval while leaving a
                         # review call for the new evidence; edits cannot use tools.
-                        review_tools = [] if not needs_review or review_calls >= MAX_REVIEW_CALLS or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else available_tools()
+                        review_tools = [] if not needs_review or (review_calls > 1 and not missing_actions()) or review_calls >= MAX_REVIEW_CALLS or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve else available_tools()
                         payload = review_payload(question, history, [s for s in sources if permitted_source(s)],
                                                  len(base_history), message.content or "", limit)
                         payload["runtime_notices"] = warnings
@@ -281,7 +281,8 @@ class Agent:
                             # An edit can introduce a new factual mistake. Spend
                             # the remaining review call auditing the edited prose
                             # when the mechanical constraints already hold.
-                            needs_review = self.settings.answer_review_enabled and not publication_issues(message.content or "")
+                            needs_review = (self.settings.answer_review_enabled and review_calls <= MAX_REVIEW_CALLS - 2
+                                            and not publication_issues(message.content or ""))
                     if not message.tool_calls:
                         if missing_actions():
                             raise ModelError('required_actions_missing', '尚未完成要求的检索或读取，本轮未完成。')

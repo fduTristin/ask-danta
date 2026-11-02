@@ -43,7 +43,7 @@ def test_review_can_correct_draft_and_sources_are_only_citations():
             return completion("保证24小时 [W2]")
         if len(requests) == 5:
             assert json.loads(body["messages"][-1]["content"])["draft"] == "材料齐全后3个工作日 [W1]"
-            assert "tools" in body
+            assert "tools" not in body
             return completion('{"corrections": []}')
         assert "保证24小时" in body["messages"][-1]["content"]
         assert "发布前核对" in body["messages"][0]["content"]

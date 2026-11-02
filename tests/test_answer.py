@@ -56,7 +56,7 @@ def test_failed_campus_citation_is_repaired_without_new_tools():
         session = client.post("/api/sessions").json()["session_id"]
         final = events(client, session)[-1]
         assert final["message"]["status"] == "complete"
-        assert final["tool_calls"] == 1 and n == 6
+        assert final["tool_calls"] == 1 and n == 5
         assert "C1" not in json.dumps(client.app.state.sessions[session].history)
 
 
@@ -160,7 +160,7 @@ def test_invalid_audit_can_retry_and_edit_within_the_same_review_budget():
         if n == 3:
             return completion("错误格式的核对输出，不应进入历史")
         body = json.loads(request.content)
-        assert ("tools" in body) == (n == 4)
+        assert "tools" not in body
         assert "错误格式的核对输出" not in json.dumps(body, ensure_ascii=False)
         payload = json.loads(body["messages"][-1]["content"])
         assert payload["audit_format_error"]
@@ -172,8 +172,8 @@ def test_invalid_audit_can_retry_and_edit_within_the_same_review_budget():
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:
         session_id = client.post("/api/sessions").json()["session_id"]
         final = events(client, session_id)[-1]
-        assert final["message"]["status"] == "complete" and n == 6
-        assert final["metrics"]["review_calls"] == 4
+        assert final["message"]["status"] == "complete" and n == 5
+        assert final["metrics"]["review_calls"] == 3
         assert final["metrics"]["review_format_retries"] == 1
         assert "保证当天" not in final["message"]["content"]
 
@@ -239,7 +239,7 @@ def test_final_audit_can_repair_a_new_unsupported_claim_introduced_by_editing():
         if n == 6:
             return completion("资料未说明其他校区的适用情况 [W1]。")
         body = json.loads(request.content)
-        assert "tools" in body
+        assert "tools" not in body
         assert json.loads(body["messages"][-1]["content"])["draft"] == "其他校区禁止办理 [W1]。"
         return completion('{"corrections": ["资料未说明其他校区，不支持禁止办理。"]}')
     with TestClient(create_app(config(), httpx.MockTransport(handler))) as client:

@@ -118,6 +118,9 @@ def test_fee_audit_must_ground_its_quote_in_actual_evidence():
         claim='电子证明8元', source_id='W1', quote='纸质证明8元，电子证明免费。', qualification='8元仅纸质；电子免费')]))
     assert not audit_fact_errors(audit, payload)
     audit.facts[0].quote = '电子证明8元'
+    assert not audit_fact_errors(audit, payload)
+    assert audit.facts[0].quote == '纸质证明8元，电子证明免费。'
+    audit.facts[0].source_id = 'W99'
     assert audit_fact_errors(audit, payload)
 
 
