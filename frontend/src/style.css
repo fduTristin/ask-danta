@@ -88,8 +88,7 @@ label { display: block; }
 .empty-layout .messages { padding: 16px 0 20px; }
 .composer-region { position: relative; width: min(640px, calc(100% - 48px)); margin: 0 auto; padding: 8px 0 max(20px, env(safe-area-inset-bottom)); flex-shrink: 0; }
 .composer { background: var(--soft); border: 1px solid var(--border); border-radius: 23px; padding: 13px 12px 10px; }
-.composer:focus-within { border-color: #7aa8d1; }
-.composer textarea { display: block; width: 100%; min-height: 61px; max-height: 180px; resize: none; background: transparent; border: 0; padding: 3px 7px; color: inherit; font-size: 16px; border-radius: 5px; line-height: 1.6; }
+.composer textarea { display: block; width: 100%; min-height: 32px; max-height: 180px; resize: none; background: transparent; border: 0; outline: none; padding: 3px 7px; color: inherit; font-size: 16px; border-radius: 5px; line-height: 1.6; }
 .composer textarea::placeholder { color: var(--muted); }
 .composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .source-trigger { min-width: 0; min-height: 34px; padding: 6px 11px; gap: 7px; border: 1px solid #dce6f0; border-radius: 999px; background: #fff; color: #416581; font-size: 12px; line-height: 1.5; }
@@ -162,6 +161,6 @@ button.danger:hover:not(:disabled) { background: #fbe1de; color: #8e2c29; }
   .welcome img { width: 42px; height: 42px; margin-bottom: 8px; }
   .welcome h1 { font-size: 20px; }
   .empty-layout .messages { padding: 4px 0; }
-  .composer textarea { min-height: 42px; max-height: 90px; }
+  .composer textarea { max-height: 90px; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .source-chevron { transition: none !important; } }
