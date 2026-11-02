@@ -9,6 +9,11 @@ POLICY = "合成官方通知（2026-10-01）：演示大学江湾校区在读证
 EXPERIENCE = "合成个人经验（2024-05-01）：我在江湾校区交齐材料后当天取到证明。这是一次经历，不是时限承诺。"
 
 RESEARCH_CASES = [
+    {"id": "course_experience", "campus": "fixture", "questions": [
+        "虚构演示大学情境：请查林澄老师的院系和职称，只给这两项及引用。",
+        "那他教的程序设计课怎么样？请查树洞的讲课体验、作业负担和给分反馈，帮我判断是否适合选。",
+        "只根据已有资料，确认他的院系和职称，不再搜索。",
+    ], "expected": "首轮及第三轮准确回答合成人物的院系和职称；第二轮只围绕课程体验，保留直接经历的分歧，不把询问/转述计为独立评价，不由个别成绩推断给分普遍宽松或保证高分，不在结尾追加身份背景或为引用而引用。"},
     {"id": "role_channels", "campus": "fixture", "source_mode": "web", "questions": [
         "虚构演示大学情境：我是在校生，请查我的档案证明缴费办理方式，最多100字。",
         "所以我也可以用校友现场缴费的方式吗？只根据已有资料回答，最多60字。",
@@ -49,6 +54,11 @@ class ResearchSearch:
         self.case_id = case_id
 
     async def search(self, query: str) -> SearchResponse:
+        if self.case_id == "course_experience":
+            return SearchResponse(query=query, provider="tavily", is_mock=False, notice=NOTICE, results=[
+                SearchResult(title="合成：演示大学林澄教师简介", url="https://example.org/synthetic/faculty-lin",
+                    snippet="合成人物档案：林澄是演示大学信息学院副教授，承担程序设计课程。该页面只介绍任职和授课信息，不提供课堂质量、作业量或给分评价。",
+                    published_at="2026-09-01")])
         if self.case_id == "role_channels":
             return SearchResponse(query=query, provider="tavily", is_mock=False, notice=NOTICE, results=[
                 SearchResult(title="合成：档案证明分对象办理说明", url="https://example.org/synthetic/archive-roles",
@@ -85,6 +95,19 @@ def campus_response(case_id: str, request: httpx.Request) -> httpx.Response:
     if case_id == "campus_unavailable":
         return httpx.Response(401, json={"detail": "synthetic expired credential"})
     assert request.method == "GET"
+    if case_id == "course_experience":
+        posts = [
+            "合成亲身经历：我在2025年修林澄的程序设计，觉得讲课翻页偏快，需要课后自己看书。每周几道编程作业，我常花一个晚上调试。最后成绩B；我说的是自己这次的体验。",
+            "合成亲身经历：我在2024年修过这门课，之前学过编程，认为练习能帮助理解。每周作业大约一小时；期末拿A-，但这不是全班分布，也不能说明所有人都容易拿高分。",
+            "合成提问帖：我还没修过林澄的程序设计，想问这门课是不是很难、给分怎么样？这里没有上课体验或成绩结论。",
+            "合成转述：我没有上过这门课，只看过一则抱怨讲课快的帖子，就听说口碑很差；没有提供新的独立上课经历。",
+        ]
+        if request.url.path.startswith('/api/holes/') and not request.url.path.endswith('/floors'):
+            return httpx.Response(200, json={"id": 12, "reply": 4, "time_created": "2025-06-01T00:00:00Z"})
+        assert request.url.path in ("/api/floors/search", "/api/holes/12/floors")
+        return httpx.Response(200, json=[{"id": index, "hole_id": 12, "content": content,
+            "time_created": "2024-06-01T00:00:00Z" if index == 2 else "2025-06-01T00:00:00Z"}
+            for index, content in enumerate(posts, 1)])
     if request.url.path == "/api/holes/12":
         return httpx.Response(200, json={"id": 12, "reply": 9, "time_created": "2024-05-01T00:00:00Z"})
     assert request.url.path in ("/api/floors/search", "/api/holes/12/floors")

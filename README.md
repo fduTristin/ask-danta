@@ -5,6 +5,8 @@
 
 第五步已执行测试、演示与两轮修复，固定质量案例共 19 组。已补齐明确检索/读取操作检查、复核补查、模型楼层 ID 隔离、完整帖子复制检查、费用与办理方式的对象核对，并验证真实 API 调用链。距离题不做专项适配。语义细节及上游可用性仍有边界，不宣称所有质量案例全通过；真实 token 过期刷新尚未主动触发。界面升级不改变这些限制，结果与历史失败见 [第五步收尾记录](docs/stage5-closure-verification.md) 和 [脱敏样本](docs/stage5-closure-samples.json)。
 
+第六步后根据实际问答反馈追加了回答相关性优化：生成、复核与改写共用表达规则，避免在体验评价末尾拼接无关身份背景，不要求用完所有引用；区分直接经历、转述和纯提问，避免把有限样本说成整体口碑。新增一组虚构课程案例，当前案例共 20 组；对照结果与仍有的表达限制见 [回答相关性验收](docs/answer-relevance-verification.md)。
+
 ## 快速启动
 
 依赖：Python 3.11+、[uv](https://docs.astral.sh/uv/getting-started/installation/)、Node.js 22.12+（建议 24 LTS）及 npm。
@@ -277,7 +279,7 @@ python scripts/check_chat.py
 脚本拒绝把 mock 结果记为真实验收通过，只输出提供商、数量及来源 URL。也应在对话中提出检索问题并打开引用来源，核对标题、摘要和相关性。
 `check_chat.py` 会新建独立测试会话，要求模型实际搜索、验证最终回答包含来源编号，再追问校区条件，最后删除该测试会话；上游失败、无工具结果或 mock 来源都不算通过。两项脚本均支持 `--port`。
 
-质量评测与接口冒烟分开运行。19 组固定案例均调用真实 DeepSeek，其中 4 组使用真实 Tavily/公开网页，`live_policy` 还使用本项目树洞凭据；其余检索/正文为明确标注的合成情境。`service_scope`、`channel_fees`、`role_channels` 比较不同渠道价格、校区适用性与身份条件，不针对某所学校硬编码答案。调用产生服务费用；无真实配置时不能把合成结果当作真实验收：
+质量评测与接口冒烟分开运行。20 组固定案例均调用真实 DeepSeek，其中 4 组使用真实 Tavily/公开网页，`live_policy` 还使用本项目树洞凭据；其余检索/正文为明确标注的合成情境。`service_scope`、`channel_fees`、`role_channels` 比较不同渠道价格、校区适用性与身份条件；`course_experience` 检查课程评价与教师身份追问的相关性，不针对某所学校或老师硬编码答案。调用产生服务费用；无真实配置时不能把合成结果当作真实验收：
 
 ```powershell
 uv run --frozen python scripts/evaluate_quality.py --label local-check
@@ -286,6 +288,7 @@ uv run --frozen python scripts/evaluate_quality.py --label conflict-check --case
 uv run --frozen python scripts/evaluate_quality.py --label no-review-check --review disabled --case source_conflict --case post_injection
 uv run --frozen python scripts/evaluate_quality.py --label repair-check --exclude-case distance --exclude-case distance_decoy
 uv run --frozen python scripts/evaluate_quality.py --label recovery-repeat --case service_scope --case campus_unavailable --repeat 3
+uv run --frozen python scripts/evaluate_quality.py --label course-style-check --case course_experience --repeat 2
 uv run --frozen python scripts/summarize_quality.py .private/quality/local-check.json .private/quality/no-review-check.json
 ```
 
