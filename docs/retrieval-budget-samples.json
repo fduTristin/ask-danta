@@ -1,0 +1,2404 @@
+{
+  "notice": "All questions and evidence in these model evaluations are synthetic. No real campus post bodies, credentials or reasoning are included. Initial shortcomings and refined repeated runs are both preserved.",
+  "verified_budget_settings": {
+    "max_tool_calls": 12,
+    "max_campus_pages": 8,
+    "request_budget_seconds": 150
+  },
+  "runs": [
+    {
+      "run": "campus-budget-20261103",
+      "case": "campus_search_focus",
+      "repetition": 1,
+      "model": "deepseek-flash",
+      "settings": {
+        "max_answer_review_calls": 4,
+        "model_reasoning_effort": "low",
+        "model_max_tokens": 4096,
+        "model_timeout_seconds": 45.0,
+        "search_depth": "advanced",
+        "max_tool_calls": 12,
+        "request_budget_seconds": 150.0,
+        "answer_review_enabled": true
+      },
+      "turns": [
+        {
+          "question": "虚构演示大学情境：林澄老师的OOP（面向对象程序设计）怎么样？",
+          "answer": "在虚构情境里，能查到的直接反馈只有一条：一位同学表示自己在2025年上过这门课，感觉讲课偏快，每周的编程作业大约要花一晚完成[C1]。仅凭这一条个人经验，还不足以判断这门课的整体口碑、给分情况或作业难度是否普遍如此。\n\n另外，网页检索只找到该教师所属院系的信息，其中没有课堂体验或课程评价[W1]，这部分不能用来评价课程。",
+          "status": "complete",
+          "tool_calls": 2,
+          "campus_pages": 1,
+          "elapsed_seconds": 7.34,
+          "metrics": {
+            "model_calls": 6,
+            "prompt_tokens": 21181,
+            "completion_tokens": 580,
+            "total_tokens": 21761,
+            "usage_reported_calls": 6,
+            "cache_usage_reported_calls": 6,
+            "prompt_cache_hit_tokens": 10112,
+            "prompt_cache_miss_tokens": 11069,
+            "review_calls": 3,
+            "answer_repairs": 1,
+            "model_seconds": 7.328,
+            "tool_seconds": 0.0,
+            "review_tool_rounds": 1,
+            "facts_checked": 0,
+            "elapsed_seconds": 7.328,
+            "tool_calls": 2,
+            "campus_pages": 1,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1"
+            },
+            {
+              "source": "web",
+              "title": "合成：演示大学校园目录",
+              "url": "https://example.org/synthetic/directory",
+              "snippet": "林澄为信息学院教师，松园食堂是校内食堂，星桥为校内科研项目。本目录无课堂、菜品或项目参与体验。",
+              "published_at": null,
+              "truncated": false,
+              "id": "W1",
+              "is_mock": false
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 21,
+                    "floor_id": 210,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #21 · 楼层 ID 210",
+                    "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C1"
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "林澄",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_web"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_web",
+              "result": {
+                "query": "林澄 面向对象程序设计 OOP 课程评价",
+                "provider": "tavily",
+                "is_mock": false,
+                "notice": "合成评测情境：演示大学及以下规定和帖子均为虚构，只按情境作答，不适用于真实学校。",
+                "results": [
+                  {
+                    "source": "web",
+                    "title": "合成：演示大学校园目录",
+                    "url": "https://example.org/synthetic/directory",
+                    "snippet": "林澄为信息学院教师，松园食堂是校内食堂，星桥为校内科研项目。本目录无课堂、菜品或项目参与体验。",
+                    "published_at": null,
+                    "truncated": false,
+                    "id": "W1",
+                    "is_mock": false
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "question": "换个问题，虚构演示大学松园食堂有什么好吃的推荐？",
+          "answer": "在虚构情境里，目前能找到的具体推荐只有一条：番茄鸡蛋面，一位同学觉得清淡合口味，并提到中午排队久，错峰去吃可能会好些[C2]。这只是一条个人体验，还不足以判断松园食堂有哪些公认招牌菜，或者不同窗口的整体水平。",
+          "status": "complete",
+          "tool_calls": 1,
+          "campus_pages": 1,
+          "elapsed_seconds": 2.44,
+          "metrics": {
+            "model_calls": 3,
+            "prompt_tokens": 13169,
+            "completion_tokens": 121,
+            "total_tokens": 13290,
+            "usage_reported_calls": 3,
+            "cache_usage_reported_calls": 3,
+            "prompt_cache_hit_tokens": 9216,
+            "prompt_cache_miss_tokens": 3953,
+            "review_calls": 1,
+            "answer_repairs": 0,
+            "model_seconds": 2.437,
+            "tool_seconds": 0.0,
+            "facts_checked": 0,
+            "elapsed_seconds": 2.437,
+            "tool_calls": 1,
+            "campus_pages": 1,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1"
+            },
+            {
+              "source": "web",
+              "title": "合成：演示大学校园目录",
+              "url": "https://example.org/synthetic/directory",
+              "snippet": "林澄为信息学院教师，松园食堂是校内食堂，星桥为校内科研项目。本目录无课堂、菜品或项目参与体验。",
+              "published_at": null,
+              "truncated": false,
+              "id": "W1",
+              "is_mock": false
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 220,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 220",
+              "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 220,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 220",
+                    "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "松园食堂",
+                "remaining_campus_pages": 7
+              }
+            }
+          ]
+        },
+        {
+          "question": "再问一个，虚构演示大学的星桥科研项目参与体验怎么样，适合科研新手吗？",
+          "answer": "虚构情境下，目前只找到一条星桥项目的参与体验：参与者称自己2025年参加，每周大约投入六小时，并提到第一次做文献检索需要适应[C3]。这只是一条个人体验，样本太少，还不能据此判断项目整体对科研新手是否友好。\n\n另外，现有网页只确认星桥是校内科研项目[W1]，还没找到正式招募通知，因此申请资格、是否面向新手等信息尚不清楚。要判断适不适合新手，还需要看项目正式要求和其他参与者的反馈。",
+          "status": "complete",
+          "tool_calls": 2,
+          "campus_pages": 1,
+          "elapsed_seconds": 6.78,
+          "metrics": {
+            "model_calls": 5,
+            "prompt_tokens": 20339,
+            "completion_tokens": 582,
+            "total_tokens": 20921,
+            "usage_reported_calls": 5,
+            "cache_usage_reported_calls": 5,
+            "prompt_cache_hit_tokens": 13696,
+            "prompt_cache_miss_tokens": 6643,
+            "review_calls": 3,
+            "answer_repairs": 1,
+            "model_seconds": 6.782,
+            "tool_seconds": 0.0,
+            "facts_checked": 0,
+            "elapsed_seconds": 6.782,
+            "tool_calls": 2,
+            "campus_pages": 1,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1"
+            },
+            {
+              "source": "web",
+              "title": "合成：演示大学校园目录",
+              "url": "https://example.org/synthetic/directory",
+              "snippet": "林澄为信息学院教师，松园食堂是校内食堂，星桥为校内科研项目。本目录无课堂、菜品或项目参与体验。",
+              "published_at": null,
+              "truncated": false,
+              "id": "W1",
+              "is_mock": false
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 220,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 220",
+              "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 23,
+              "floor_id": 230,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #23 · 楼层 ID 230",
+              "snippet": "合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3"
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 23,
+                    "floor_id": 230,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #23 · 楼层 ID 230",
+                    "snippet": "合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C3"
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "星桥",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_web"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_web",
+              "result": {
+                "query": "星桥 科研项目 申请 资格 报名",
+                "provider": "tavily",
+                "is_mock": false,
+                "notice": "合成评测情境：演示大学及以下规定和帖子均为虚构，只按情境作答，不适用于真实学校。",
+                "results": [
+                  {
+                    "source": "web",
+                    "title": "合成：演示大学校园目录",
+                    "url": "https://example.org/synthetic/directory",
+                    "snippet": "林澄为信息学院教师，松园食堂是校内食堂，星桥为校内科研项目。本目录无课堂、菜品或项目参与体验。",
+                    "published_at": null,
+                    "truncated": false,
+                    "id": "W1",
+                    "is_mock": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "campus-budget-20261103",
+      "case": "course_experience",
+      "repetition": 1,
+      "model": "deepseek-flash",
+      "settings": {
+        "max_answer_review_calls": 4,
+        "model_reasoning_effort": "low",
+        "model_max_tokens": 4096,
+        "model_timeout_seconds": 45.0,
+        "search_depth": "advanced",
+        "max_tool_calls": 12,
+        "request_budget_seconds": 150.0,
+        "answer_review_enabled": true
+      },
+      "turns": [
+        {
+          "question": "虚构演示大学情境：请查林澄老师的院系和职称，只给这两项及引用。",
+          "answer": "院系：演示大学信息学院；职称：副教授，[W1]",
+          "status": "complete",
+          "tool_calls": 1,
+          "campus_pages": 0,
+          "elapsed_seconds": 2.5,
+          "metrics": {
+            "model_calls": 3,
+            "prompt_tokens": 11541,
+            "completion_tokens": 83,
+            "total_tokens": 11624,
+            "usage_reported_calls": 3,
+            "cache_usage_reported_calls": 3,
+            "prompt_cache_hit_tokens": 7936,
+            "prompt_cache_miss_tokens": 3605,
+            "review_calls": 1,
+            "answer_repairs": 0,
+            "model_seconds": 2.5,
+            "tool_seconds": 0.0,
+            "facts_checked": 0,
+            "elapsed_seconds": 2.5,
+            "tool_calls": 1,
+            "campus_pages": 0,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "web",
+              "title": "合成：演示大学林澄教师简介",
+              "url": "https://example.org/synthetic/faculty-lin",
+              "snippet": "合成人物档案：林澄是演示大学信息学院副教授，承担程序设计课程。该页面只介绍任职和授课信息，不提供课堂质量、作业量或给分评价。",
+              "published_at": "2026-09-01",
+              "truncated": false,
+              "id": "W1",
+              "is_mock": false
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_web"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_web",
+              "result": {
+                "query": "林澄 老师 院系 职称",
+                "provider": "tavily",
+                "is_mock": false,
+                "notice": "合成评测情境：演示大学及以下规定和帖子均为虚构，只按情境作答，不适用于真实学校。",
+                "results": [
+                  {
+                    "source": "web",
+                    "title": "合成：演示大学林澄教师简介",
+                    "url": "https://example.org/synthetic/faculty-lin",
+                    "snippet": "合成人物档案：林澄是演示大学信息学院副教授，承担程序设计课程。该页面只介绍任职和授课信息，不提供课堂质量、作业量或给分评价。",
+                    "published_at": "2026-09-01",
+                    "truncated": false,
+                    "id": "W1",
+                    "is_mock": false
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "question": "那他教的程序设计课怎么样？请查树洞的讲课体验、作业负担和给分反馈，帮我判断是否适合选。",
+          "answer": "找到的两条直接反馈里，讲课节奏和作业耗时并不一致，只能作为选课参考，还不足以判断整体口碑：\n\n- **讲课体验**：2025 年修过这门课的同学觉得讲课时翻页偏快，需要课后自己看书补上 [C1]。\n- **作业负担**：同一位同学说每周有几道编程作业，调试常花一个晚上 [C1]；2024 年修过的另一位同学认为每周作业约一小时，练习对理解有帮助 [C2]。两人的个人体验不同，不能据此推断这门课普遍作业量大或小。\n- **给分**：两人分别自述拿到 B（2025 年）[C1] 和 A-（2024 年）[C2]。这只是个人成绩，不能当作全班分布或给分松紧的证据。\n\n目前只读到这两条直接经历。两位同学的感受只代表各自的情况；样本仅两人且相隔一年，无法判断课程近期是否调整，也得不出给分普遍偏高或偏低的结论。是否适合选，主要看你能否接受翻页偏快的讲课节奏、愿意课后补读，并接受作业耗时因人而异。",
+          "status": "complete",
+          "tool_calls": 2,
+          "campus_pages": 2,
+          "elapsed_seconds": 10.86,
+          "metrics": {
+            "model_calls": 6,
+            "prompt_tokens": 23788,
+            "completion_tokens": 1243,
+            "total_tokens": 25031,
+            "usage_reported_calls": 6,
+            "cache_usage_reported_calls": 6,
+            "prompt_cache_hit_tokens": 13568,
+            "prompt_cache_miss_tokens": 10220,
+            "review_calls": 4,
+            "answer_repairs": 2,
+            "model_seconds": 10.86,
+            "tool_seconds": 0.0,
+            "facts_checked": 0,
+            "elapsed_seconds": 10.86,
+            "tool_calls": 2,
+            "campus_pages": 2,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "web",
+              "title": "合成：演示大学林澄教师简介",
+              "url": "https://example.org/synthetic/faculty-lin",
+              "snippet": "合成人物档案：林澄是演示大学信息学院副教授，承担程序设计课程。该页面只介绍任职和授课信息，不提供课堂质量、作业量或给分评价。",
+              "published_at": "2026-09-01",
+              "truncated": false,
+              "id": "W1",
+              "is_mock": false
+            },
+            {
+              "source": "campus",
+              "hole_id": 12,
+              "floor_id": 1,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #12 · 楼层 ID 1",
+              "snippet": "合成亲身经历：我在2025年修林澄的程序设计，觉得讲课翻页偏快，需要课后自己看书。每周几道编程作业，我常花一个晚上调试。最后成绩B；我说的是自己这次的体验。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1"
+            },
+            {
+              "source": "campus",
+              "hole_id": 12,
+              "floor_id": 2,
+              "time_created": "2024-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #12 · 楼层 ID 2",
+              "snippet": "合成亲身经历：我在2024年修过这门课，之前学过编程，认为练习能帮助理解。每周作业大约一小时；期末拿A-，但这不是全班分布，也不能说明所有人都容易拿高分。",
+              "published_at": "2024-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 12,
+              "floor_id": 3,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #12 · 楼层 ID 3",
+              "snippet": "合成提问帖：我还没修过林澄的程序设计，想问这门课是不是很难、给分怎么样？这里没有上课体验或成绩结论。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3"
+            },
+            {
+              "source": "campus",
+              "hole_id": 12,
+              "floor_id": 4,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #12 · 楼层 ID 4",
+              "snippet": "合成转述：我没有上过这门课，只看过一则抱怨讲课快的帖子，就听说口碑很差；没有提供新的独立上课经历。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C4"
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 12,
+                    "floor_id": 1,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #12 · 楼层 ID 1",
+                    "snippet": "合成亲身经历：我在2025年修林澄的程序设计，觉得讲课翻页偏快，需要课后自己看书。每周几道编程作业，我常花一个晚上调试。最后成绩B；我说的是自己这次的体验。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C1"
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 12,
+                    "floor_id": 2,
+                    "time_created": "2024-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #12 · 楼层 ID 2",
+                    "snippet": "合成亲身经历：我在2024年修过这门课，之前学过编程，认为练习能帮助理解。每周作业大约一小时；期末拿A-，但这不是全班分布，也不能说明所有人都容易拿高分。",
+                    "published_at": "2024-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 12,
+                    "floor_id": 3,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #12 · 楼层 ID 3",
+                    "snippet": "合成提问帖：我还没修过林澄的程序设计，想问这门课是不是很难、给分怎么样？这里没有上课体验或成绩结论。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C3"
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 12,
+                    "floor_id": 4,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #12 · 楼层 ID 4",
+                    "snippet": "合成转述：我没有上过这门课，只看过一则抱怨讲课快的帖子，就听说口碑很差；没有提供新的独立上课经历。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C4"
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 4,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "林澄",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 12,
+                    "floor_id": 1,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #12 · 楼层 ID 1",
+                    "snippet": "合成亲身经历：我在2025年修林澄的程序设计，觉得讲课翻页偏快，需要课后自己看书。每周几道编程作业，我常花一个晚上调试。最后成绩B；我说的是自己这次的体验。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C1"
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 12,
+                    "floor_id": 2,
+                    "time_created": "2024-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #12 · 楼层 ID 2",
+                    "snippet": "合成亲身经历：我在2024年修过这门课，之前学过编程，认为练习能帮助理解。每周作业大约一小时；期末拿A-，但这不是全班分布，也不能说明所有人都容易拿高分。",
+                    "published_at": "2024-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 12,
+                    "floor_id": 3,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #12 · 楼层 ID 3",
+                    "snippet": "合成提问帖：我还没修过林澄的程序设计，想问这门课是不是很难、给分怎么样？这里没有上课体验或成绩结论。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C3"
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 12,
+                    "floor_id": 4,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #12 · 楼层 ID 4",
+                    "snippet": "合成转述：我没有上过这门课，只看过一则抱怨讲课快的帖子，就听说口碑很差；没有提供新的独立上课经历。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C4"
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 4,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "程序设计",
+                "remaining_campus_pages": 6
+              }
+            }
+          ]
+        },
+        {
+          "question": "只根据已有资料，确认他的院系和职称，不再搜索。",
+          "answer": "院系：演示大学信息学院；职称：副教授。[W1]",
+          "status": "complete",
+          "tool_calls": 0,
+          "campus_pages": 0,
+          "elapsed_seconds": 1.91,
+          "metrics": {
+            "model_calls": 2,
+            "prompt_tokens": 8231,
+            "completion_tokens": 28,
+            "total_tokens": 8259,
+            "usage_reported_calls": 2,
+            "cache_usage_reported_calls": 2,
+            "prompt_cache_hit_tokens": 4608,
+            "prompt_cache_miss_tokens": 3623,
+            "review_calls": 1,
+            "answer_repairs": 0,
+            "model_seconds": 1.906,
+            "tool_seconds": 0.0,
+            "facts_checked": 0,
+            "elapsed_seconds": 1.906,
+            "tool_calls": 0,
+            "campus_pages": 0,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "web",
+              "title": "合成：演示大学林澄教师简介",
+              "url": "https://example.org/synthetic/faculty-lin",
+              "snippet": "合成人物档案：林澄是演示大学信息学院副教授，承担程序设计课程。该页面只介绍任职和授课信息，不提供课堂质量、作业量或给分评价。",
+              "published_at": "2026-09-01",
+              "truncated": false,
+              "id": "W1",
+              "is_mock": false
+            },
+            {
+              "source": "campus",
+              "hole_id": 12,
+              "floor_id": 1,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #12 · 楼层 ID 1",
+              "snippet": "合成亲身经历：我在2025年修林澄的程序设计，觉得讲课翻页偏快，需要课后自己看书。每周几道编程作业，我常花一个晚上调试。最后成绩B；我说的是自己这次的体验。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1"
+            },
+            {
+              "source": "campus",
+              "hole_id": 12,
+              "floor_id": 2,
+              "time_created": "2024-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #12 · 楼层 ID 2",
+              "snippet": "合成亲身经历：我在2024年修过这门课，之前学过编程，认为练习能帮助理解。每周作业大约一小时；期末拿A-，但这不是全班分布，也不能说明所有人都容易拿高分。",
+              "published_at": "2024-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 12,
+              "floor_id": 3,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #12 · 楼层 ID 3",
+              "snippet": "合成提问帖：我还没修过林澄的程序设计，想问这门课是不是很难、给分怎么样？这里没有上课体验或成绩结论。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3"
+            },
+            {
+              "source": "campus",
+              "hole_id": 12,
+              "floor_id": 4,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #12 · 楼层 ID 4",
+              "snippet": "合成转述：我没有上过这门课，只看过一则抱怨讲课快的帖子，就听说口碑很差；没有提供新的独立上课经历。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C4"
+            }
+          ],
+          "events": []
+        }
+      ]
+    },
+    {
+      "run": "campus-budget-refined-20261103",
+      "case": "campus_search_focus",
+      "repetition": 1,
+      "model": "deepseek-flash",
+      "settings": {
+        "max_answer_review_calls": 4,
+        "model_reasoning_effort": "low",
+        "model_max_tokens": 4096,
+        "model_timeout_seconds": 45.0,
+        "search_depth": "advanced",
+        "max_tool_calls": 12,
+        "request_budget_seconds": 150.0,
+        "answer_review_enabled": true
+      },
+      "turns": [
+        {
+          "question": "虚构演示大学情境：林澄老师的OOP（面向对象程序设计）怎么样？",
+          "answer": "在找到的部分讨论中，关于林澄老师的 OOP，有两条同学的个人经历：一位同学在 2025 年修课，觉得讲课节奏偏快，自己每周的编程作业大约要花一个晚上 [C1]；另一位在 2024 年修课、已有编程基础，认为练习有用，期末拿到 B+，但这是他个人的感受和成绩，不代表全班情况 [C3]。\n\n这些只是两条个人经历，样本有限，课程实际的整体节奏、作业负担和给分情况还不清楚，是否适合你的情况也待了解。如果你已有一定编程基础、能接受较快的讲解并愿意投入作业时间，或许会比较适应；零基础同学的压力如何则没有信息。考核形式、点名和项目占比等同样未知，选课前可再找上过课的同学了解。",
+          "status": "complete",
+          "tool_calls": 4,
+          "campus_pages": 4,
+          "elapsed_seconds": 8.33,
+          "metrics": {
+            "model_calls": 6,
+            "prompt_tokens": 24394,
+            "completion_tokens": 778,
+            "total_tokens": 25172,
+            "usage_reported_calls": 6,
+            "cache_usage_reported_calls": 6,
+            "prompt_cache_hit_tokens": 9216,
+            "prompt_cache_miss_tokens": 15178,
+            "review_calls": 3,
+            "answer_repairs": 1,
+            "model_seconds": 8.328,
+            "tool_seconds": 0.0,
+            "blocked_tool_calls": 0,
+            "facts_checked": 0,
+            "elapsed_seconds": 8.328,
+            "tool_calls": 4,
+            "campus_pages": 4,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 99,
+              "floor_id": 990,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #99 · 楼层 ID 990",
+              "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 211,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 211",
+              "snippet": "合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3",
+              "thread_read": true
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 21,
+                    "floor_id": 210,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #21 · 楼层 ID 210",
+                    "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C1",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "林澄",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 99,
+                    "floor_id": 990,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #99 · 楼层 ID 990",
+                    "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "OOP",
+                "remaining_campus_pages": 6
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 99,
+                    "floor_id": 990,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #99 · 楼层 ID 990",
+                    "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "面向对象程序设计",
+                "remaining_campus_pages": 5
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "read_campus_thread"
+            },
+            {
+              "type": "tool_complete",
+              "name": "read_campus_thread",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 21,
+                    "floor_id": 210,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #21 · 楼层 ID 210",
+                    "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C1",
+                    "thread_read": true
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 21,
+                    "floor_id": 211,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #21 · 楼层 ID 211",
+                    "snippet": "合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C3",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 2,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": {
+                  "id": 21,
+                  "time_created": "2025-06-01T00:00:00Z",
+                  "time_updated": null,
+                  "reply": 2
+                },
+                "query": null,
+                "remaining_campus_pages": 4
+              }
+            }
+          ]
+        },
+        {
+          "question": "换个问题，虚构演示大学松园食堂有什么好吃的推荐？",
+          "answer": "目前找到的反馈里，松园食堂提到两样可以试试：\n\n- **番茄鸡蛋面**：有同学近期吃过，觉得清淡、合口味，但中午排队时间长 [C4]。\n- **咖喱鸡饭**：另一位同学觉得合口味，不过偏咸，午高峰也要排队 [C5]。\n\n这两样都来自个人口味反馈，不能代表食堂整体水平。若你偏好清淡，按其中一条反馈，番茄鸡蛋面可能更接近你的口味，但仅凭一条评价，参考有限。其他菜品、价格和供应情况暂无依据。",
+          "status": "complete",
+          "tool_calls": 3,
+          "campus_pages": 3,
+          "elapsed_seconds": 7.75,
+          "metrics": {
+            "model_calls": 7,
+            "prompt_tokens": 35635,
+            "completion_tokens": 655,
+            "total_tokens": 36290,
+            "usage_reported_calls": 7,
+            "cache_usage_reported_calls": 7,
+            "prompt_cache_hit_tokens": 18816,
+            "prompt_cache_miss_tokens": 16819,
+            "review_calls": 3,
+            "answer_repairs": 1,
+            "model_seconds": 7.75,
+            "tool_seconds": 0.0,
+            "blocked_tool_calls": 0,
+            "facts_checked": 0,
+            "elapsed_seconds": 7.75,
+            "tool_calls": 3,
+            "campus_pages": 3,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 99,
+              "floor_id": 990,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #99 · 楼层 ID 990",
+              "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 211,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 211",
+              "snippet": "合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 220,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 220",
+              "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C4",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 221,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 221",
+              "snippet": "合成另一位同学：松园食堂的咖喱鸡饭合我口味，但我觉得偏咸；午高峰排过队。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C5",
+              "thread_read": true
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 220,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 220",
+                    "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C4",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "松园食堂",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "read_campus_thread"
+            },
+            {
+              "type": "tool_complete",
+              "name": "read_campus_thread",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 220,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 220",
+                    "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C4",
+                    "thread_read": true
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 221,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 221",
+                    "snippet": "合成另一位同学：松园食堂的咖喱鸡饭合我口味，但我觉得偏咸；午高峰排过队。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C5",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 2,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": {
+                  "id": 22,
+                  "time_created": "2025-06-01T00:00:00Z",
+                  "time_updated": null,
+                  "reply": 2
+                },
+                "query": null,
+                "remaining_campus_pages": 6
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 220,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 220",
+                    "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C4",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "松园 窗口",
+                "remaining_campus_pages": 5
+              }
+            }
+          ]
+        },
+        {
+          "question": "再问一个，虚构演示大学的星桥科研项目参与体验怎么样，适合科研新手吗？",
+          "answer": "找到的星桥项目经历中，有一位同学明确说是以科研新手身份于2024年参加，收到过每周反馈，觉得入门过程有帮助，同时提醒不保证其他组也有同样频率的指导 [C7]。另一位于2025年参加的同学提到每周大约投入六小时，第一次做文献检索需要适应，但没说明自己参加时是否算新手 [C6]。\n\n所以，现有反馈里确有新手觉得入门有帮助的例子，但只有这一条明确的新手经历，还不足以判断项目整体是否适合新手；不同组的指导情况可能不一样。项目正式通知、申请资格和时间安排等官方信息，目前没找到。",
+          "status": "complete",
+          "tool_calls": 3,
+          "campus_pages": 2,
+          "elapsed_seconds": 10.7,
+          "metrics": {
+            "model_calls": 7,
+            "prompt_tokens": 37583,
+            "completion_tokens": 1133,
+            "total_tokens": 38716,
+            "usage_reported_calls": 7,
+            "cache_usage_reported_calls": 7,
+            "prompt_cache_hit_tokens": 20352,
+            "prompt_cache_miss_tokens": 17231,
+            "review_calls": 4,
+            "answer_repairs": 2,
+            "model_seconds": 10.703,
+            "tool_seconds": 0.0,
+            "blocked_tool_calls": 0,
+            "facts_checked": 0,
+            "elapsed_seconds": 10.703,
+            "tool_calls": 3,
+            "campus_pages": 2,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 99,
+              "floor_id": 990,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #99 · 楼层 ID 990",
+              "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 211,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 211",
+              "snippet": "合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 220,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 220",
+              "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C4",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 221,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 221",
+              "snippet": "合成另一位同学：松园食堂的咖喱鸡饭合我口味，但我觉得偏咸；午高峰排过队。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C5",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 23,
+              "floor_id": 230,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #23 · 楼层 ID 230",
+              "snippet": "合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C6",
+              "thread_read": true
+            },
+            {
+              "source": "web",
+              "title": "合成：演示大学校园目录",
+              "url": "https://example.org/synthetic/directory",
+              "snippet": "林澄为信息学院教师，松园食堂是校内食堂，星桥为校内科研项目。本目录无课堂、菜品或项目参与体验。",
+              "published_at": null,
+              "truncated": false,
+              "id": "W1",
+              "is_mock": false
+            },
+            {
+              "source": "campus",
+              "hole_id": 23,
+              "floor_id": 231,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #23 · 楼层 ID 231",
+              "snippet": "合成另一位同学：我2024年作为科研新手参加星桥，收到过每周反馈，入门过程有帮助。这不保证其他组也有同样指导。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C7",
+              "thread_read": true
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 23,
+                    "floor_id": 230,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #23 · 楼层 ID 230",
+                    "snippet": "合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C6",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "星桥",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_web"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_web",
+              "result": {
+                "query": "星桥科研项目 招募 通知",
+                "provider": "tavily",
+                "is_mock": false,
+                "notice": "合成评测情境：演示大学及以下规定和帖子均为虚构，只按情境作答，不适用于真实学校。",
+                "results": [
+                  {
+                    "source": "web",
+                    "title": "合成：演示大学校园目录",
+                    "url": "https://example.org/synthetic/directory",
+                    "snippet": "林澄为信息学院教师，松园食堂是校内食堂，星桥为校内科研项目。本目录无课堂、菜品或项目参与体验。",
+                    "published_at": null,
+                    "truncated": false,
+                    "id": "W1",
+                    "is_mock": false
+                  }
+                ]
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "read_campus_thread"
+            },
+            {
+              "type": "tool_complete",
+              "name": "read_campus_thread",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 23,
+                    "floor_id": 230,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #23 · 楼层 ID 230",
+                    "snippet": "合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C6",
+                    "thread_read": true
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 23,
+                    "floor_id": 231,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #23 · 楼层 ID 231",
+                    "snippet": "合成另一位同学：我2024年作为科研新手参加星桥，收到过每周反馈，入门过程有帮助。这不保证其他组也有同样指导。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C7",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 2,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": {
+                  "id": 23,
+                  "time_created": "2025-06-01T00:00:00Z",
+                  "time_updated": null,
+                  "reply": 2
+                },
+                "query": null,
+                "remaining_campus_pages": 6
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "campus-budget-refined-20261103",
+      "case": "campus_search_focus",
+      "repetition": 2,
+      "model": "deepseek-flash",
+      "settings": {
+        "max_answer_review_calls": 4,
+        "model_reasoning_effort": "low",
+        "model_max_tokens": 4096,
+        "model_timeout_seconds": 45.0,
+        "search_depth": "advanced",
+        "max_tool_calls": 12,
+        "request_budget_seconds": 150.0,
+        "answer_review_enabled": true
+      },
+      "turns": [
+        {
+          "question": "虚构演示大学情境：林澄老师的OOP（面向对象程序设计）怎么样？",
+          "answer": "在虚构演示情境里，目前只找到同一讨论中的两条个人反馈，不能代表整体口碑：\n\n- 一位同学2025年上过林澄老师的OOP，觉得讲课偏快，每周做编程作业大约要花一个晚上[C1]。\n- 另一位同学2024年修过这门课，已有编程基础，认为练习有用，期末拿到B+；该同学也说明，这不代表全班给分分布[C3]。\n\n有反馈提到编程作业和练习，但作业次数、形式、批改情况并不清楚。给分高低、考试难度、答疑情况，以及无编程基础者的体验，现有材料都没有提到，无法判断；这些反馈来自2024、2025两个年份，是否属于同一套课程安排也未说明。",
+          "status": "complete",
+          "tool_calls": 5,
+          "campus_pages": 5,
+          "elapsed_seconds": 11.5,
+          "metrics": {
+            "model_calls": 8,
+            "prompt_tokens": 32772,
+            "completion_tokens": 1073,
+            "total_tokens": 33845,
+            "usage_reported_calls": 8,
+            "cache_usage_reported_calls": 8,
+            "prompt_cache_hit_tokens": 21888,
+            "prompt_cache_miss_tokens": 10884,
+            "review_calls": 4,
+            "answer_repairs": 2,
+            "model_seconds": 11.484,
+            "tool_seconds": 0.016,
+            "blocked_tool_calls": 0,
+            "facts_checked": 0,
+            "elapsed_seconds": 11.5,
+            "tool_calls": 5,
+            "campus_pages": 5,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 99,
+              "floor_id": 990,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #99 · 楼层 ID 990",
+              "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 211,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 211",
+              "snippet": "合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3",
+              "thread_read": true
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 21,
+                    "floor_id": 210,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #21 · 楼层 ID 210",
+                    "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C1",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "林澄",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 99,
+                    "floor_id": 990,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #99 · 楼层 ID 990",
+                    "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "OOP 面向对象程序设计",
+                "remaining_campus_pages": 6
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 99,
+                    "floor_id": 990,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #99 · 楼层 ID 990",
+                    "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  }
+                ],
+                "offset": 0,
+                "limit": 30,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "面向对象",
+                "remaining_campus_pages": 5
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 99,
+                    "floor_id": 990,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #99 · 楼层 ID 990",
+                    "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  }
+                ],
+                "offset": 0,
+                "limit": 30,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "OOP 给分",
+                "remaining_campus_pages": 4
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "read_campus_thread"
+            },
+            {
+              "type": "tool_complete",
+              "name": "read_campus_thread",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 21,
+                    "floor_id": 210,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #21 · 楼层 ID 210",
+                    "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C1",
+                    "thread_read": true
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 21,
+                    "floor_id": 211,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #21 · 楼层 ID 211",
+                    "snippet": "合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C3",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 2,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": {
+                  "id": 21,
+                  "time_created": "2025-06-01T00:00:00Z",
+                  "time_updated": null,
+                  "reply": 2
+                },
+                "query": null,
+                "remaining_campus_pages": 3
+              }
+            }
+          ]
+        },
+        {
+          "question": "换个问题，虚构演示大学松园食堂有什么好吃的推荐？",
+          "answer": "在虚构演示情境里，目前找到的松园食堂反馈只涉及两道菜，不能当成整体推荐榜单：\n\n- 番茄鸡蛋面：有同学觉得口味清淡、合胃口，但中午排队较久[C4]。\n- 咖喱鸡饭：另一位同学觉得合口味，不过偏咸，午高峰也排过队[C5]。\n\n按这两条反馈，想清淡些可考虑番茄鸡蛋面，能接受偏咸口味可考虑咖喱鸡饭；这只是基于个别个人感受的建议。其他菜品是否有值得推荐的，现有反馈中没有依据，价格和供应时间也未提及。",
+          "status": "complete",
+          "tool_calls": 3,
+          "campus_pages": 3,
+          "elapsed_seconds": 9.7,
+          "metrics": {
+            "model_calls": 7,
+            "prompt_tokens": 33408,
+            "completion_tokens": 941,
+            "total_tokens": 34349,
+            "usage_reported_calls": 7,
+            "cache_usage_reported_calls": 7,
+            "prompt_cache_hit_tokens": 18688,
+            "prompt_cache_miss_tokens": 14720,
+            "review_calls": 4,
+            "answer_repairs": 2,
+            "model_seconds": 9.703,
+            "tool_seconds": 0.0,
+            "blocked_tool_calls": 0,
+            "facts_checked": 0,
+            "elapsed_seconds": 9.703,
+            "tool_calls": 3,
+            "campus_pages": 3,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 99,
+              "floor_id": 990,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #99 · 楼层 ID 990",
+              "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 211,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 211",
+              "snippet": "合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 220,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 220",
+              "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C4",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 221,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 221",
+              "snippet": "合成另一位同学：松园食堂的咖喱鸡饭合我口味，但我觉得偏咸；午高峰排过队。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C5",
+              "thread_read": true
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 220,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 220",
+                    "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C4",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 30,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "松园食堂",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "read_campus_thread"
+            },
+            {
+              "type": "tool_complete",
+              "name": "read_campus_thread",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 220,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 220",
+                    "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C4",
+                    "thread_read": true
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 221,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 221",
+                    "snippet": "合成另一位同学：松园食堂的咖喱鸡饭合我口味，但我觉得偏咸；午高峰排过队。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C5",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 2,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": {
+                  "id": 22,
+                  "time_created": "2025-06-01T00:00:00Z",
+                  "time_updated": null,
+                  "reply": 2
+                },
+                "query": null,
+                "remaining_campus_pages": 6
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 22,
+                    "floor_id": 220,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #22 · 楼层 ID 220",
+                    "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C4",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 30,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "松园 窗口",
+                "remaining_campus_pages": 5
+              }
+            }
+          ]
+        },
+        {
+          "question": "再问一个，虚构演示大学的星桥科研项目参与体验怎么样，适合科研新手吗？",
+          "answer": "在虚构演示情境里，找到的两条星桥项目经历都来自同一条讨论的部分内容，样本很少，不能当成整体口碑，也无法据此判断它是否普遍适合科研新手：\n\n- 一位同学2025年参加，每周大约投入六小时，第一次做文献检索时需要适应[C6]。\n- 另一位同学2024年以科研新手身份参加，说收到过每周反馈，认为入门过程有帮助，同时提醒其他组未必有同样的指导[C7]。\n\n从这两条看，新手参加后可能需要经历一段入门适应；也有人觉得反馈对入门有帮助。但指导方式是否各组一致、是否普遍适合新手，都还没有足够依据。",
+          "status": "complete",
+          "tool_calls": 3,
+          "campus_pages": 3,
+          "elapsed_seconds": 10.91,
+          "metrics": {
+            "model_calls": 7,
+            "prompt_tokens": 38183,
+            "completion_tokens": 1157,
+            "total_tokens": 39340,
+            "usage_reported_calls": 7,
+            "cache_usage_reported_calls": 7,
+            "prompt_cache_hit_tokens": 23936,
+            "prompt_cache_miss_tokens": 14247,
+            "review_calls": 4,
+            "answer_repairs": 2,
+            "model_seconds": 10.906,
+            "tool_seconds": 0.0,
+            "blocked_tool_calls": 0,
+            "facts_checked": 0,
+            "elapsed_seconds": 10.906,
+            "tool_calls": 3,
+            "campus_pages": 3,
+            "budget_reasons": []
+          },
+          "warnings": [],
+          "sources": [
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 210,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 210",
+              "snippet": "合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C1",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 99,
+              "floor_id": 990,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #99 · 楼层 ID 990",
+              "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C2"
+            },
+            {
+              "source": "campus",
+              "hole_id": 21,
+              "floor_id": 211,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #21 · 楼层 ID 211",
+              "snippet": "合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C3",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 220,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 220",
+              "snippet": "合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C4",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 22,
+              "floor_id": 221,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #22 · 楼层 ID 221",
+              "snippet": "合成另一位同学：松园食堂的咖喱鸡饭合我口味，但我觉得偏咸；午高峰排过队。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C5",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 23,
+              "floor_id": 230,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #23 · 楼层 ID 230",
+              "snippet": "合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C6",
+              "thread_read": true
+            },
+            {
+              "source": "campus",
+              "hole_id": 23,
+              "floor_id": 231,
+              "time_created": "2025-06-01T00:00:00Z",
+              "time_updated": null,
+              "truncated": false,
+              "redacted": false,
+              "title": "树洞 #23 · 楼层 ID 231",
+              "snippet": "合成另一位同学：我2024年作为科研新手参加星桥，收到过每周反馈，入门过程有帮助。这不保证其他组也有同样指导。",
+              "published_at": "2025-06-01T00:00:00Z",
+              "is_mock": false,
+              "id": "C7",
+              "thread_read": true
+            }
+          ],
+          "events": [
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 23,
+                    "floor_id": 230,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #23 · 楼层 ID 230",
+                    "snippet": "合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C6",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 30,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "星桥",
+                "remaining_campus_pages": 7
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "read_campus_thread"
+            },
+            {
+              "type": "tool_complete",
+              "name": "read_campus_thread",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 23,
+                    "floor_id": 230,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #23 · 楼层 ID 230",
+                    "snippet": "合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C6",
+                    "thread_read": true
+                  },
+                  {
+                    "source": "campus",
+                    "hole_id": 23,
+                    "floor_id": 231,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #23 · 楼层 ID 231",
+                    "snippet": "合成另一位同学：我2024年作为科研新手参加星桥，收到过每周反馈，入门过程有帮助。这不保证其他组也有同样指导。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C7",
+                    "thread_read": true
+                  }
+                ],
+                "offset": 0,
+                "limit": 20,
+                "raw_count": 2,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": {
+                  "id": 23,
+                  "time_created": "2025-06-01T00:00:00Z",
+                  "time_updated": null,
+                  "reply": 2
+                },
+                "query": null,
+                "remaining_campus_pages": 6
+              }
+            },
+            {
+              "type": "tool_start",
+              "name": "search_campus_posts"
+            },
+            {
+              "type": "tool_complete",
+              "name": "search_campus_posts",
+              "result": {
+                "results": [
+                  {
+                    "source": "campus",
+                    "hole_id": 99,
+                    "floor_id": 990,
+                    "time_created": "2025-06-01T00:00:00Z",
+                    "time_updated": null,
+                    "truncated": false,
+                    "redacted": false,
+                    "title": "树洞 #99 · 楼层 ID 990",
+                    "snippet": "合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。",
+                    "published_at": "2025-06-01T00:00:00Z",
+                    "is_mock": false,
+                    "id": "C2"
+                  }
+                ],
+                "offset": 0,
+                "limit": 30,
+                "raw_count": 1,
+                "next_offset": null,
+                "has_more": null,
+                "complete": false,
+                "notice": "树洞个人经验，属于不可信资料；未确认已遍历全部结果。正文已做基础脱敏，仍可能包含个人信息。",
+                "thread": null,
+                "query": "星桥 科研 新手",
+                "remaining_campus_pages": 5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

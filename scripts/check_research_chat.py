@@ -17,7 +17,7 @@ def main() -> int:
     def request(path, method="GET", body=None):
         data = json.dumps(body).encode() if body is not None else None
         return urlopen(Request(base + path, data=data, method=method,
-                              headers={"Content-Type": "application/json"}), timeout=130)
+                              headers={"Content-Type": "application/json"}), timeout=620)
 
     def chat(question, mode):
         with request(f"/api/sessions/{session_id}/chat", "POST", {"message": question, "source_mode": mode}) as response:

@@ -31,7 +31,7 @@ TOOLS = [{"type": "function", "function": {
 }}]
 
 CAMPUS_TOOLS = [{"type": "function", "function": {
-    "name": "search_campus_posts", "description": "搜索获授权的树洞内容，返回洞号、正文、日期和引用编号。不提供楼层顺序或楼主身份。不是公开网页搜索。",
+    "name": "search_campus_posts", "description": "搜索获授权的树洞内容，返回洞号、正文、日期和引用编号。优先用一个明确姓名或主题短词，不堆叠同义词与问句；多词查询不保证同时匹配全部词。根据结果再换词或读取上下文。不提供楼层顺序或楼主身份。不是公开网页搜索。",
     "parameters": CampusSearchRequest.model_json_schema(),
 }}, {"type": "function", "function": {
     "name": "read_campus_thread", "description": "按洞号分页读取帖子元数据和楼层上下文；每次只读取一页，不代表完整帖子。",
@@ -153,11 +153,13 @@ class Agent:
         review_calls = 0
         failed = False
         retrieval_exhausted = False
+        budget_reasons: list[str] = []
         attempted: set[tuple[str, str]] = set()
         metrics = {"model_calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
                    "usage_reported_calls": 0, "cache_usage_reported_calls": 0,
                    "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 0,
-                   "review_calls": 0, "answer_repairs": 0}
+                   "review_calls": 0, "answer_repairs": 0, "model_seconds": 0.0, "tool_seconds": 0.0,
+                   "blocked_tool_calls": 0}
         system = {"role": "system", "content": SYSTEM + "\n当前日期：" + datetime.now(timezone(timedelta(hours=8))).date().isoformat()
                   + "\n本轮数据源权限：" + ("公开网页与树洞只读工具。" if campus_allowed else "仅公开网页；不得调用树洞工具或引用此前树洞资料。")
                   + "\n已加载 Skill：" + self.skill.name + "\n适用条件：" + self.skill.description + "\n" + self.skill.instructions
@@ -171,11 +173,48 @@ class Agent:
             async with asyncio.timeout(max(0, end - time.monotonic())):
                 return await awaitable
 
+        def budget_state():
+            return {"remaining_tool_calls": max(0, self.settings.max_tool_calls - calls),
+                    "remaining_campus_pages": max(0, campus_budget.max_pages - campus_budget.pages) if campus_allowed else 0,
+                    "remaining_retrieval_seconds": round(max(0, deadline - reserve - time.monotonic()), 1),
+                    "remaining_total_seconds": round(max(0, deadline - time.monotonic()), 1)}
+
+        def retrieval_stop_reason():
+            if retrieval_exhausted or time.monotonic() >= deadline - reserve:
+                return "retrieval_time_budget_exhausted"
+            if calls >= self.settings.max_tool_calls:
+                return "tool_budget_exhausted"
+            return None
+
+        def note_budget(code):
+            if code not in budget_reasons:
+                budget_reasons.append(code)
+            notice = {
+                "tool_budget_exhausted": f"本轮已用完 {self.settings.max_tool_calls} 次工具调用，回答基于已取得的资料。",
+                "campus_page_budget_exhausted": f"本轮已用完 {campus_budget.max_pages} 页树洞检索额度，尚未覆盖的讨论未继续读取。",
+                "retrieval_time_budget_exhausted": "本轮检索时间已用完，已停止查找并留出时间整理回答。",
+            }[code]
+            if notice not in warnings:
+                warnings.append(notice)
+            return notice
+
+        def runtime_message():
+            state = budget_state()
+            return {"role": "system", "content": "本轮实时检索额度（campus-agent 本地限制，不是上游平台限流）："
+                    + json.dumps(state, ensure_ascii=False)
+                    + "。只使用本次提供的工具。树洞搜索与读帖各消耗一页，额度为0时不能再调用这两种工具；"
+                    "剩余网页工具仅在能回答当前缺口时使用，不为凑来源查询身份背景。"
+                    "每次先看结果再决定下一步，别一次提交超过剩余额度的调用；信息足够立即回答。"}
+
         async def complete(messages, tools):
             if metrics['model_calls'] >= self.settings.max_tool_calls + MAX_REVIEW_CALLS + 1:
                 raise ModelError('model_budget_exhausted', '本轮模型调用预算已用完。')
             metrics["model_calls"] += 1
-            message = await within(self.model.complete(messages, tools), deadline)
+            call_started = time.monotonic()
+            try:
+                message = await within(self.model.complete(messages, tools), deadline)
+            finally:
+                metrics["model_seconds"] += time.monotonic() - call_started
             for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
                 metrics[key] += message.usage.get(key, 0)
             if all(key in message.usage for key in ("prompt_tokens", "completion_tokens", "total_tokens")):
@@ -195,18 +234,18 @@ class Agent:
                 yield {"type": "source_notice", "message": warning}
             try:
                 while True:
-                    limited = retrieval_exhausted or calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve
+                    stop_reason = retrieval_stop_reason()
+                    limited = stop_reason is not None
                     if limited:
-                        warnings.append("已达到工具调用或检索时间预算，停止检索；以下回答仅基于已有资料，可能存在缺口。")
-                        yield {"type": "budget", "message": warnings[-1]}
-                    messages = [system, *model_history(history)]
+                        yield {"type": "budget", "code": stop_reason, "message": note_budget(stop_reason)}
+                    messages = [{**system, "content": system["content"] + "\n" + runtime_message()["content"]}, *model_history(history)]
                     if reviewed:
                         messages.append({"role": "system", "content":
                             "这是发布前核对触发补查后的回答。请结合新增证据再次自查切题性和每个关键数值的依据；"
                             "只保留回答本轮问题所需的信息，不能用相关但不回答问题的资料填充篇幅。"
                             "简单事实题仍查不到核心事实时，用两三句话说明缺口和核实方式，不展开无关地址、班次或背景。"})
                     if limited:
-                        messages.append({"role": "system", "content": warnings[-1] + "请立即回答，明确未核实部分，不再调用工具。简单事实题只给有证据的答案或简短缺口说明，不展开无关背景。"})
+                        messages.append({"role": "system", "content": "检索已停止，请基于已有证据立即回答，明确未核实部分，不再调用工具。只给有证据的答案或简短缺口说明，不展开无关背景。运行额度提示由界面单独显示，正文不重复。"})
                     yield {"type": "model_start", "message": "正在整理回答…" if limited else "正在理解问题和已有资料…"}
                     message = await complete(messages, [] if limited else available_tools())
                     needs_review = self.settings.answer_review_enabled
@@ -233,6 +272,8 @@ class Agent:
                         payload = review_payload(question, history, [s for s in sources if permitted_source(s)],
                                                  len(base_history), message.content or "", limit)
                         payload["runtime_notices"] = warnings
+                        payload["retrieval_budget"] = budget_state()
+                        payload["available_tools"] = [tool["function"]["name"] for tool in review_tools]
                         payload["corrections"] = corrections
                         payload["audit_format_error"] = audit_format_error
                         payload['required_actions'] = sorted(required_actions)
@@ -307,8 +348,6 @@ class Agent:
                                             else "回答仍复制了完整帖子，未发布该候选答案。" if any(i['code'] == 'whole_post_copy' for i in issues)
                                             else "回答仍超出字数上限，未发布该候选答案。")
                             answer = fallback(warnings[-1], [s for s in sources if permitted_source(s)])
-                        if limited:
-                            answer += "\n\n" + warnings[-1]
                         if limit is not None and len(answer) > limit:
                             failed = True
                             answer = short_failure(limit)
@@ -319,12 +358,19 @@ class Agent:
                         raise ModelError("model_ignored_budget", "模型未按预算要求结束工具调用。")
                     history.append(message.wire())
                     for call in message.tool_calls:
+                        tool_started = time.monotonic()
                         active_call = {"call_id": call.id, "name": call.function.name}
                         yield {"type": "tool_start", **active_call}
                         result = None
                         try:
-                            if calls >= self.settings.max_tool_calls or time.monotonic() >= deadline - reserve:
-                                raise SearchError("tool_budget_exhausted", "检索预算已用完，此工具未执行。")
+                            stop_reason = retrieval_stop_reason()
+                            if stop_reason:
+                                raise SearchError(stop_reason, note_budget(stop_reason))
+                            # A withdrawn source cannot consume the other source's
+                            # remaining allowance. Model calls still have a hard cap.
+                            if call.function.name in ("search_campus_posts", "read_campus_thread") and campus_allowed and campus_budget.pages >= campus_budget.max_pages:
+                                metrics["blocked_tool_calls"] += 1
+                                raise CampusError("campus_page_budget_exhausted", note_budget("campus_page_budget_exhausted"), 429)
                             calls += 1  # Invalid/unknown attempts also consume budget.
                             if call.function.name not in ARGUMENTS:
                                 raise SearchError("unknown_tool", "不允许执行此工具。")
@@ -397,20 +443,26 @@ class Agent:
                         except (SearchError, CampusError, TimeoutError) as exc:
                             if isinstance(exc, TimeoutError):
                                 retrieval_exhausted = True
-                            code = exc.code if isinstance(exc, (SearchError, CampusError)) else "tool_budget_exhausted"
-                            error = exc.message if isinstance(exc, (SearchError, CampusError)) else "检索时间预算已用完，停止当前搜索。"
+                            code = exc.code if isinstance(exc, (SearchError, CampusError)) else "retrieval_time_budget_exhausted"
+                            error = note_budget(code) if code in ("tool_budget_exhausted", "campus_page_budget_exhausted", "retrieval_time_budget_exhausted") else exc.message
                             if isinstance(exc, CampusError) and code in ("campus_auth_failed", "campus_credentials_invalid", "campus_login_required", "campus_credentials_write_failed"):
                                 campus_allowed = False
                                 system["content"] += "\n树洞认证现已失效，停止树洞调用，继续公开网页并说明限制。"
                             result = {"error": {"code": code, "message": error}}
-                            warnings.append(error)
+                            if error not in warnings:
+                                warnings.append(error)
                             yield {"type": "tool_error", **active_call, **result}
+                        finally:
+                            metrics["tool_seconds"] += time.monotonic() - tool_started
                         history.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result, ensure_ascii=False)})
                         active_call = None
             except (ModelError, TimeoutError) as exc:
                 code = exc.code if isinstance(exc, ModelError) else "request_budget_exhausted"
                 reason = exc.message if isinstance(exc, ModelError) else "本轮总时长预算已用完。"
                 limited = limited or isinstance(exc, TimeoutError)
+                metrics["error_code"] = code
+                if code in ("request_budget_exhausted", "model_budget_exhausted") and code not in budget_reasons:
+                    budget_reasons.append(code)
                 warnings.append(reason)
                 failed = True
                 yield {"type": "error", "error": {"code": code, "message": reason}}
@@ -430,14 +482,17 @@ class Agent:
                 session.web_history.extend(new_turn)
             session.sources = sources
             cited = citation_ids(answer)
+            metrics.update(elapsed_seconds=round(time.monotonic() - started, 3), tool_calls=calls,
+                           campus_pages=campus_budget.pages, budget_reasons=budget_reasons)
+            for key in ("model_seconds", "tool_seconds"):
+                metrics[key] = round(metrics[key], 3)
             assistant = {"role": "assistant", "content": answer,
                          "sources": [s for s in sources if s["id"] in cited and not s["is_mock"]],
                          "warnings": warnings, "limited": limited, "reviewed": reviewed,
                          "status": "incomplete" if failed or limited else "complete",
                          "source_mode": mode, "skill": self.skill.name if used_skill else None, "plan": plan,
-                         "end_reason": "error" if failed else "budget" if limited else "answered"}
+                         "end_reason": "error" if failed else "budget" if limited else "answered", "metrics": metrics}
             session.messages.extend([{"role": "user", "content": question}, assistant])
-            metrics["elapsed_seconds"] = round(time.monotonic() - started, 3)
             yield {"type": "final", "session_id": session.id, "message": assistant,
                    "session_sources": sources, "tool_calls": calls, "campus_pages": campus_budget.pages, "metrics": metrics}
         finally:

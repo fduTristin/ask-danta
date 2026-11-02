@@ -9,6 +9,11 @@ POLICY = "合成官方通知（2026-10-01）：演示大学江湾校区在读证
 EXPERIENCE = "合成个人经验（2024-05-01）：我在江湾校区交齐材料后当天取到证明。这是一次经历，不是时限承诺。"
 
 RESEARCH_CASES = [
+    {"id": "campus_search_focus", "campus": "fixture", "questions": [
+        "虚构演示大学情境：林澄老师的OOP（面向对象程序设计）怎么样？",
+        "换个问题，虚构演示大学松园食堂有什么好吃的推荐？",
+        "再问一个，虚构演示大学的星桥科研项目参与体验怎么样，适合科研新手吗？",
+    ], "expected": "三个校内经验问题优先实际查树洞，用明确对象短关键词；长词堆命中无关资料时收窄或换词，按缺口读取上下文。课程/菜品/项目经验只依合成个人反馈，不用网页身份简介代替，不把个人经历当保证。"},
     {"id": "course_experience", "campus": "fixture", "questions": [
         "虚构演示大学情境：请查林澄老师的院系和职称，只给这两项及引用。",
         "那他教的程序设计课怎么样？请查树洞的讲课体验、作业负担和给分反馈，帮我判断是否适合选。",
@@ -54,6 +59,10 @@ class ResearchSearch:
         self.case_id = case_id
 
     async def search(self, query: str) -> SearchResponse:
+        if self.case_id == 'campus_search_focus':
+            return SearchResponse(query=query, provider='tavily', is_mock=False, notice=NOTICE, results=[
+                SearchResult(title='合成：演示大学校园目录', url='https://example.org/synthetic/directory',
+                    snippet='林澄为信息学院教师，松园食堂是校内食堂，星桥为校内科研项目。本目录无课堂、菜品或项目参与体验。')])
         if self.case_id == "course_experience":
             return SearchResponse(query=query, provider="tavily", is_mock=False, notice=NOTICE, results=[
                 SearchResult(title="合成：演示大学林澄教师简介", url="https://example.org/synthetic/faculty-lin",
@@ -95,6 +104,32 @@ def campus_response(case_id: str, request: httpx.Request) -> httpx.Response:
     if case_id == "campus_unavailable":
         return httpx.Response(401, json={"detail": "synthetic expired credential"})
     assert request.method == "GET"
+    if case_id == 'campus_search_focus':
+        # Synthetic noisy search: extra words can swamp the named entity.
+        # This is a controlled fixture, not a claim about upstream tokenization.
+        topics = {
+            21: ('林澄', '合成经历：2025年上过林澄的面向对象程序设计，讲课偏快，我每周做编程作业要花一晚。',
+                 '合成另一位同学：我2024年修过林澄的OOP，已有编程基础，觉得练习有用，期末B+。这不是全班给分分布。'),
+            22: ('松园', '合成经历：上周在松园食堂吃番茄鸡蛋面，觉得清淡合口味，中午排队久。',
+                 '合成另一位同学：松园食堂的咖喱鸡饭合我口味，但我觉得偏咸；午高峰排过队。'),
+            23: ('星桥', '合成经历：2025年参加星桥科研项目，我每周大约花六小时，第一次做文献检索需要适应。',
+                 '合成另一位同学：我2024年作为科研新手参加星桥，收到过每周反馈，入门过程有帮助。这不保证其他组也有同样指导。'),
+        }
+        if request.url.path == '/api/floors/search':
+            query = request.url.params['search']
+            topic = next((hid for hid, (name, *_) in topics.items() if name in query and len(query.split()) <= 2), None)
+            if topic is None:
+                return httpx.Response(200, json=[{'id': 990, 'hole_id': 99, 'content': '合成无关帖子：出售各种课程资料，未说明教师身份或上课经历。', 'time_created': '2025-06-01T00:00:00Z'}])
+            posts = [(topic * 10, topics[topic][1])]
+        else:
+            topic = int(request.url.path.split('/')[3])
+            if topic not in topics:
+                return httpx.Response(404)
+            if not request.url.path.endswith('/floors'):
+                return httpx.Response(200, json={'id': topic, 'reply': 2, 'time_created': '2025-06-01T00:00:00Z'})
+            posts = [(topic * 10 + i, content) for i, content in enumerate(topics[topic][1:])]
+        return httpx.Response(200, json=[{'id': fid, 'hole_id': topic, 'content': content,
+                                         'time_created': '2025-06-01T00:00:00Z'} for fid, content in posts])
     if case_id == "course_experience":
         posts = [
             "合成亲身经历：我在2025年修林澄的程序设计，觉得讲课翻页偏快，需要课后自己看书。每周几道编程作业，我常花一个晚上调试。最后成绩B；我说的是自己这次的体验。",

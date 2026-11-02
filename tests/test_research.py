@@ -187,7 +187,59 @@ def test_campus_page_budget_does_not_block_remaining_web_budget(tmp_path):
         events = post(client, id)
         assert pages == events[-1]["campus_pages"] == 1
         assert any(e.get("error", {}).get("code") == "campus_page_budget_exhausted" for e in events)
-        assert events[-1]["tool_calls"] == 3
+        assert events[-1]["tool_calls"] == 2
+        assert events[-1]["metrics"]["blocked_tool_calls"] == 1
+        assert events[-1]["metrics"]["budget_reasons"] == ["campus_page_budget_exhausted"]
+        assert events[-1]["message"]["warnings"] == ["本轮已用完 1 页树洞检索额度，尚未覆盖的讨论未继续读取。"]
+
+
+def test_remaining_campus_budget_reaches_draft_and_review(tmp_path):
+    n = 0
+    def handler(request):
+        nonlocal n
+        if request.url.host == 'forum.fduhole.com':
+            return httpx.Response(200, json=[floor()])
+        n += 1
+        body = json.loads(request.content)
+        if n == 1:
+            assert '"remaining_campus_pages": 1' in body['messages'][0]['content']
+            return completion(None, [call('campus', 'search_campus_posts', '{"query":"江湾"}')])
+        assert 'search_campus_posts' not in tools(body)
+        assert 'read_campus_thread' not in tools(body)
+        assert 'search_web' in tools(body)
+        if n == 2:
+            assert '"remaining_campus_pages": 0' in body['messages'][0]['content']
+            return completion('有一位同学建议提前办理 [C1]。')
+        payload = json.loads(body['messages'][-1]['content'])
+        assert payload['retrieval_budget']['remaining_campus_pages'] == 0
+        assert payload['retrieval_budget']['remaining_tool_calls'] == 11
+        assert set(payload['available_tools']) == tools(body)
+        return completion('{"corrections": []}')
+    cfg = config(tmp_path, max_campus_pages=1).model_copy(update={'answer_review_enabled': True})
+    with TestClient(create_app(cfg, httpx.MockTransport(handler))) as client:
+        sid = client.post('/api/sessions').json()['session_id']
+        result = post(client, sid)[-1]
+        assert result['message']['status'] == 'complete'
+        assert result['message']['warnings'] == []
+
+
+def test_expanded_defaults_allow_search_beyond_old_limits(tmp_path):
+    n, campus_requests = 0, 0
+    def handler(request):
+        nonlocal n, campus_requests
+        if request.url.host == 'forum.fduhole.com':
+            campus_requests += 1
+            return httpx.Response(200, json=[floor()])
+        n += 1
+        if n == 1:
+            return completion(None, [call(str(i), 'search_campus_posts', json.dumps({'query': f'合成主题{i}'})) for i in range(7)])
+        return completion('一位同学建议提前办理，仅代表个人经历 [C1]。')
+    with TestClient(create_app(config(tmp_path), httpx.MockTransport(handler))) as client:
+        sid = client.post('/api/sessions').json()['session_id']
+        result = post(client, sid)[-1]
+        assert result['campus_pages'] == result['tool_calls'] == campus_requests == 7
+        assert result['message']['status'] == 'complete'
+        assert result['message']['warnings'] == []
 
 
 def test_untrusted_post_cannot_execute_write_tool_or_change_source_permission(tmp_path):

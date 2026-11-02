@@ -107,7 +107,10 @@ def test_invalid_tools_rejected_and_budget_ends_loop(name, arguments, code):
         result = events(client, id)
         assert any(e["type"] == "tool_error" for e in result)
         assert result[-1]["message"]["limited"] is True
-        assert "预算" in result[-1]["message"]["content"]
+        assert result[-1]["message"]["content"] == "资料不足。"
+        assert result[-1]["metrics"]["budget_reasons"] == ["tool_budget_exhausted"]
+        assert "1 次工具调用" in result[-1]["message"]["warnings"][-1]
+        assert "时间" not in result[-1]["message"]["warnings"][-1]
         assert len(attempts) == 2
 
 
@@ -264,7 +267,7 @@ def test_slow_search_stops_before_reserved_answer_time():
             if count == 1:
                 return completion(None, [call()])
             assert "tools" not in body
-            assert json.loads(body["messages"][-2]["content"])["error"]["code"] == "tool_budget_exhausted"
+            assert json.loads(body["messages"][-2]["content"])["error"]["code"] == "retrieval_time_budget_exhausted"
             return completion("未能及时获取资料。")
 
         config = settings(request_budget_seconds=.15)
@@ -275,6 +278,9 @@ def test_slow_search_stops_before_reserved_answer_time():
             assert result[-1]["type"] == "final"
             assert result[-1]["message"]["limited"]
             assert result[-1]["message"]["content"].startswith("未能及时获取资料。")
+            assert result[-1]["metrics"]["budget_reasons"] == ["retrieval_time_budget_exhausted"]
+            assert result[-1]["metrics"]["tool_seconds"] > 0
+            assert len(result[-1]["message"]["warnings"]) == 1
 
     asyncio.run(run())
 

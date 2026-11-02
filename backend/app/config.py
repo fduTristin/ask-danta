@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     session_db_file: Path = Path(".private/history/chat.sqlite3")
     campus_max_content_chars: int = Field(default=4000, ge=100, le=12000)
     http_timeout_seconds: float = Field(default=15, gt=0, le=120)
-    max_tool_calls: int = Field(default=6, ge=1, le=30)
-    max_campus_pages: int = Field(default=3, ge=1, le=20)
-    request_budget_seconds: float = Field(default=90, gt=0, le=600)
+    max_tool_calls: int = Field(default=12, ge=1, le=30)
+    max_campus_pages: int = Field(default=8, ge=1, le=20)
+    request_budget_seconds: float = Field(default=150, gt=0, le=600)
     backend_port: int = Field(default=8000, ge=1024, le=65535)
     frontend_port: int = Field(default=5173, ge=1024, le=65535)
 

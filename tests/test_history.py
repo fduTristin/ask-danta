@@ -30,6 +30,11 @@ def test_restart_history_preferences_rename_and_delete(tmp_path):
         result = client.post(f'/api/sessions/{sid}/chat', json={'message': '你好', 'source_mode': 'web', 'source_preference': 'web'})
         assert '"type": "final"' in result.text
         original = client.get(f'/api/sessions/{sid}').json()
+        final = [json.loads(frame[6:]) for frame in result.text.strip().split('\n\n')][-1]
+        assert original['messages'][-1]['metrics'] == final['metrics']
+        assert final['metrics']['model_calls'] == 1
+        assert final['metrics']['tool_calls'] == final['metrics']['campus_pages'] == 0
+        assert final['metrics']['budget_reasons'] == []
         assert original['source_preference'] == 'web'
         assert client.patch(f'/api/sessions/{sid}', json={'title': '江湾办事'}).status_code == 200
         assert client.patch(f'/api/sessions/{sid}', json={'title': '  '}).status_code == 422
