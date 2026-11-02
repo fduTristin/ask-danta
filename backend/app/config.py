@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     search_max_results: int = Field(default=5, ge=1, le=10)
     search_max_snippet_chars: int = Field(default=2000, ge=100, le=10000)
     campus_auth_file: Path = Path(".private/campus-tokens.json")
+    session_db_file: Path = Path(".private/history/chat.sqlite3")
     campus_max_content_chars: int = Field(default=4000, ge=100, le=12000)
     http_timeout_seconds: float = Field(default=15, gt=0, le=120)
     max_tool_calls: int = Field(default=6, ge=1, le=30)
@@ -46,6 +47,11 @@ class Settings(BaseSettings):
         if self.backend_port == self.frontend_port:
             raise ValueError("BACKEND_PORT and FRONTEND_PORT must differ")
         return self
+
+    @property
+    def sessions_path(self) -> Path:
+        path = self.session_db_file.expanduser()
+        return path if path.is_absolute() else ROOT / path
 
     @property
     def auth_path(self) -> Path:

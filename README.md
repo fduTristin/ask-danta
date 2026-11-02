@@ -48,6 +48,7 @@ python scripts/dev.py
 | `SEARCH_DEPTH` | `advanced` | Tavily `basic` / `advanced`；深入搜索可能消耗更多额度 |
 | `SEARCH_TIMEOUT_SECONDS` | 未单独设置 | 搜索及网页读取超时；未设置时沿用 `HTTP_TIMEOUT_SECONDS` |
 | `CAMPUS_AUTH_FILE` | `.private/campus-tokens.json` | 本项目独立登录保存的 token 对；健康检查读取并校验本地结构，不请求远端，也不返回凭据内容 |
+| `SESSION_DB_FILE` | `.private/history/chat.sqlite3` | 本机聊天记录；使用独立私有目录，数据库与事务文件不进入提交包 |
 | `CAMPUS_MAX_CONTENT_CHARS` | `4000` | 每条树洞正文最多 100–12000 字符，截断有标记 |
 | `HTTP_TIMEOUT_SECONDS` | `15` | 树洞 HTTP 超时及搜索/网页读取的默认超时；模型使用独立配置 |
 | `MAX_TOOL_CALLS` | `6` | 每轮用户请求最多尝试的工具调用数；无效参数和未知工具也计数 |
@@ -78,7 +79,7 @@ API 使用 [Tavily 官方 Search 接口](https://docs.tavily.com/documentation/a
 
 ## API 契约
 
-`GET /api/health` 返回 `stage=5`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 与 `campus.available` 保持 `false`（健康检查不验证远端可用性）；`campus.credentials_present` 仅表示文件存在；`auth_state` 为 `missing/invalid/expired/configured`，`tools_enabled` 代表本地凭据可用于尝试调用，不保证远端仍有效。`skills` 列出已加载的 `campus-research`。
+`GET /api/health` 返回 `stage=6`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 与 `campus.available` 保持 `false`（健康检查不验证远端可用性）；`campus.credentials_present` 仅表示文件存在；`auth_state` 为 `missing/invalid/expired/configured`，`tools_enabled` 代表本地凭据可用于尝试调用，不保证远端仍有效。`skills` 列出已加载的 `campus-research`。
 
 `POST /api/search` 保留为独立搜索验证入口；同一搜索适配器已注册为 Agent 的 `search_web(query)` 工具。请求：
 
@@ -120,10 +121,13 @@ API 使用 [Tavily 官方 Search 接口](https://docs.tavily.com/documentation/a
 | 接口 | 用途 |
 | --- | --- |
 | `POST /api/sessions` | 新建会话，返回 `session_id`、空历史与来源 |
+| `GET /api/sessions` | 按最近活动排序的会话摘要；未提问的空白会话不出现在列表中 |
 | `GET /api/sessions/{session_id}` | 读取已完成的用户/助手消息、来源与忙碌状态 |
+| `PATCH /api/sessions/{session_id}` | 修改 `title`（1–80 字符）或 `source_preference`（`auto/web/all`） |
 | `POST /api/sessions/{session_id}/clear` | 清空历史、用户条件与检索来源，保留会话 ID |
 | `DELETE /api/sessions/{session_id}` | 删除会话 |
-| `POST /api/sessions/{session_id}/chat` | 请求体 `{"message":"你的问题","source_mode":"all"}`，返回 SSE 事件流 |
+| `POST /api/sessions/{session_id}/cancel` | 主动取消当前回答，返回 202；读取会话确认 `busy=false` 后可切换或删除 |
+| `POST /api/sessions/{session_id}/chat` | 请求体 `{"message":"你的问题","source_mode":"web","source_preference":"auto"}`，返回 SSE 事件流；`source_mode` 是本轮有效权限，`source_preference` 是供下次恢复的用户偏好 |
 
 问题去除首尾空白，限 1–8000 字符。无效输入返回 `422`；不存在的会话返回 `404`；同一会话正在回答时，重复发送、清空或删除返回 `409`；未配置模型返回 `503 model_not_configured`。流建立前的错误为 JSON，流中的上游失败通过 `error`/`tool_error` 事件报告。
 
@@ -149,7 +153,9 @@ API 使用 [Tavily 官方 Search 接口](https://docs.tavily.com/documentation/a
 
 `read_web(source_id)` 只接受本会话已检索到的来源编号，如 `W1`。每次 DNS 解析和每一次重定向都要求地址为公开 HTTP(S)、标准端口且不含认证信息；拒绝本机、内网、保留地址、混合公私地址与 IPv4 映射地址。连接固定到通过校验的 IP，保持原 Host/TLS SNI，禁用环境代理，最多 3 次跳转。读取不携带模型/搜索密钥或浏览器凭据，只接受 HTML/纯文本，最多 1 MB 内容、12000 字符并标注截断。暂不支持 PDF、登录页面或依赖 JavaScript 的页面；HTML 提取可能仍带部分导航，不能宣称完整阅读所有正文。
 
-会话只保存在单进程内存中，重启后丢失，不支持多 worker 或多用户部署。页面将当前会话 ID 放入 `sessionStorage`，刷新可恢复已完成消息；新建会话使用独立 ID，不读取旧历史。新建不会删除旧会话，删除接口或服务重启可释放旧会话。停止或断开连接会取消正在进行的上游请求并释放会话占用；尚未完成的整轮不写入历史。已发送的上游请求仍可能产生费用。当前未做长对话压缩或持久化。
+会话由本机 SQLite 持久化，默认位于 `.private/history/chat.sqlite3`，刷新与重启后可恢复消息、引用、标题和数据源偏好。历史目录仅授予当前用户访问权限，SQLite 事务文件继承目录权限；请将自定义 `SESSION_DB_FILE` 放在独立目录中。目录、数据库、事务文件和 token 均不进入 Git 或提交包。数据库包含聊天文本及工具已裁剪的必要证据，不保存认证密码、token 或 `reasoning_content`。保存消息和引用使用同一事务，落盘成功后才发送最终回答事件；存储失败不伪装为成功。删除会话会删除对应历史与引用，清空保留会话 ID 和标题。
+
+当前仍限本机单进程单用户，不支持多个 worker 或服务实例同时操作同一历史文件。页面在 `localStorage` 保存当前会话 ID 和树洞片段授权选择，不保存聊天正文或凭据；未发送草稿仅在当前页面内按会话暂存。新会话不读取其他会话的内容，持久化不是跨会话记忆。停止或断开连接会取消上游请求；未完成的回答不写入已提交消息，但保留待发送问题与中断标记，重启后可以恢复。已发送的上游请求仍可能产生费用。当前未做长对话压缩，旧版随进程退出丢失的内存记录无法恢复。
 
 ## 对话中的树洞工具与调研 Skill（第四步）
 

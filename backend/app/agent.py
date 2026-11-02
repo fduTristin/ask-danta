@@ -51,6 +51,7 @@ class ChatRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     message: str = Field(min_length=1, max_length=8000)
     source_mode: Literal["web", "all"] | None = None
+    source_preference: Literal["auto", "web", "all"] = "auto"
 
 
 @dataclass
@@ -61,9 +62,21 @@ class Session:
     messages: list[dict] = field(default_factory=list)
     sources: list[dict] = field(default_factory=list)
     busy: bool = False
+    title: str = "新对话"
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    source_preference: str = "auto"
+    pending_question: str | None = None
+    interrupted: bool = False
+
+    def summary(self) -> dict:
+        return {"session_id": self.id, "title": self.title, "created_at": self.created_at,
+                "updated_at": self.updated_at, "busy": self.busy,
+                "source_preference": self.source_preference, "interrupted": self.interrupted}
 
     def public(self) -> dict:
-        return {"session_id": self.id, "messages": self.messages, "sources": self.sources, "busy": self.busy}
+        return {**self.summary(), "messages": self.messages, "sources": self.sources,
+                "pending_question": self.pending_question}
 
 
 def fallback(reason: str, sources: list[dict]) -> str:
