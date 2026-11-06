@@ -4,7 +4,7 @@
 
 ## 项目与图标来源
 
-旦挞校园助手由**旦夕开发组（DanXi-Dev）**开发。本项目使用的 Logo 取自该团队在旦挞官网发布的校园助手图标。[开发组主页](https://github.com/DanXi-Dev) · [旦挞校园助手](https://danxi.fduhole.com/project/app) · [Logo 原图](https://danxi.fduhole.com/assets/app.webp)
+旦挞校园助手由 **旦夕开发组（DanXi-Dev）** 开发。本项目使用的 Logo 取自该团队在旦挞官网发布的校园助手图标。[开发组主页](https://github.com/DanXi-Dev) · [旦挞校园助手](https://danxi.fduhole.com/project/app) · [Logo 原图](https://danxi.fduhole.com/assets/app.webp)
 
 旦挞茶楼是由旦挞团队开发和运营的校内匿名社区，在问问旦挞的界面中简称“树洞”。依据社区使用协议，通过第三方客户端访问社区服务须获得管理团队的明确许可。[旦挞社区服务使用协议](https://danxi.fduhole.com/doc/community-user-agreement)
 
