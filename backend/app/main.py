@@ -48,7 +48,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                 app.state.sessions.clear()
                 app.state.store.close()
 
-    app = FastAPI(title="问问旦挞", version="0.6.0", lifespan=lifespan)
+    app = FastAPI(title="Ask Danta", version="0.6.0", lifespan=lifespan)
 
     @app.exception_handler(SessionStorageError)
     async def storage_error_handler(request: Request, exc: SessionStorageError):

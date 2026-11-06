@@ -1,5 +1,5 @@
 [project]
-name = "campus-agent"
+name = "ask-danta"
 version = "0.1.0"
 description = "Local campus research assistant"
 requires-python = ">=3.11"

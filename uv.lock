@@ -34,7 +34,7 @@ wheels = [
 ]
 
 [[package]]
-name = "campus-agent"
+name = "ask-danta"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

@@ -60,7 +60,7 @@ test('source menu supports keyboard selection and stays within desktop and narro
 
 test('desktop layout, cited Markdown, refresh, rename and deletion', async ({ page, context }) => {
   await page.setViewportSize({ width: 1440, height: 960 });
-  await expect(page).toHaveTitle('问问旦挞');
+  await expect(page).toHaveTitle('Ask Danta');
   for (const label of ['服务状态', '当前进度', '试一次网页搜索']) await expect(page.getByText(label, { exact: true })).toHaveCount(0);
   await page.screenshot({ path: '../.private/verification/stage6/desktop-empty.png' });
   await ask(page, '查合成来源');

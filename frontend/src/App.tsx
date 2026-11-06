@@ -303,7 +303,7 @@ export function App() {
   }
   function beginAction(kind: 'rename' | 'delete', target: Summary) { setRename(target.title); setAction({ kind, target }); setMenu(undefined); if (mobile) setSidebar(false); }
   const sidebarContent = <>
-    <div className="brand"><img src="/danta-logo.webp" alt="旦挞小猫 Logo" /><strong>问问旦挞</strong></div>
+    <div className="brand"><img src="/danta-logo.webp" alt="旦挞小猫 Logo" /><strong>Ask Danta</strong></div>
     <button className="new-chat" onClick={() => navigate()} disabled={working || !ready}><SquarePen />新对话</button>
     <nav className="history" aria-label="历史会话"><p className="history-label">最近对话</p>{!list.length && <p className="history-empty">开始聊天后，对话会保存在这里。</p>}{list.map(item => <div className={`history-row ${session?.session_id === item.session_id ? 'selected' : ''}`} key={item.session_id}>
       <button className="history-title" aria-current={session?.session_id === item.session_id ? 'page' : undefined} title={item.title} onClick={() => navigate(item.session_id)} disabled={working}><span>{item.title}</span>{item.busy && <small aria-label="正在回答">…</small>}</button>
@@ -317,7 +317,7 @@ export function App() {
     {!mobile && sidebar && <aside className="sidebar">{sidebarContent}</aside>}
     {mobile && sidebar && <Modal title="历史会话" drawer close={() => setSidebar(false)}>{sidebarContent}</Modal>}
     <main className="main">
-      <header className="topbar"><button title={sidebar ? '收起历史会话' : '展开历史会话'} aria-label={sidebar ? '收起历史会话' : '展开历史会话'} aria-expanded={sidebar} onClick={() => setSidebar(!sidebar)}><PanelLeft /></button><span>问问旦挞</span>{(!sidebar || mobile) && <button aria-label="新对话" title="新对话" onClick={() => navigate()} disabled={working}><SquarePen /></button>}</header>
+      <header className="topbar"><button title={sidebar ? '收起历史会话' : '展开历史会话'} aria-label={sidebar ? '收起历史会话' : '展开历史会话'} aria-expanded={sidebar} onClick={() => setSidebar(!sidebar)}><PanelLeft /></button><span>Ask Danta</span>{(!sidebar || mobile) && <button aria-label="新对话" title="新对话" onClick={() => navigate()} disabled={working}><SquarePen /></button>}</header>
       <div className={`chat-layout ${hasConversation ? '' : 'empty-layout'}`}>
         <div className="messages-scroll" ref={scroll} onScroll={() => { const node = scroll.current!; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; setShowLatest(!nearBottom.current); }}>
           <div className="messages" aria-label="对话内容">

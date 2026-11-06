@@ -63,7 +63,7 @@ export function Answer({ message, index }: { message: Message; index: number }) 
     catch { setCopyError('无法自动复制，请选中回答后复制。'); }
   }
   return <article className="message assistant" ref={article}>
-    <div className="assistant-label"><img src="/danta-logo.webp" alt="" />旦挞</div>
+    <div className="assistant-label"><img src="/danta-logo.webp" alt="" />问问旦挞</div>
     <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm, citations]} skipHtml components={{
       a: ({ href, children }) => {
         const id = href?.match(/^#citation-([WC]\d+)$/)?.[1];

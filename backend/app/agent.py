@@ -200,7 +200,7 @@ class Agent:
 
         def runtime_message():
             state = budget_state()
-            return {"role": "system", "content": "本轮实时检索额度（campus-agent 本地限制，不是上游平台限流）："
+            return {"role": "system", "content": "本轮实时检索额度（Ask Danta 本地限制，不是上游平台限流）："
                     + json.dumps(state, ensure_ascii=False)
                     + "。只使用本次提供的工具。树洞搜索与读帖各消耗一页，额度为0时不能再调用这两种工具；"
                     "剩余网页工具仅在能回答当前缺口时使用，不为凑来源查询身份背景。"

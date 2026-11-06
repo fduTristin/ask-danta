@@ -1,1 +1,1 @@
-"""Campus Agent backend."""
+"""Ask Danta backend."""
