@@ -2,21 +2,14 @@
 <html lang="zh-CN"><meta charset="utf-8"><title>Ask Danta · 产品演示</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#edf4fb;color:#222c39;font-family:'Microsoft YaHei','Segoe UI',sans-serif;overflow:hidden;width:1920px;height:1080px}
-.top{position:absolute;left:240px;right:240px;top:44px;display:flex;align-items:center;justify-content:space-between}
-h1{margin:0;font-size:43px;font-weight:600;letter-spacing:-1px}.brand{display:flex;align-items:center;gap:12px;font-size:24px;color:#00529b}.brand img{width:48px;height:48px}
 .window{position:absolute;left:240px;top:136px;width:1440px;height:800px;background:white;border:1px solid #d8e4ef;border-radius:20px;overflow:hidden;box-shadow:0 24px 70px #24496b16}
 .chrome{height:36px;border-bottom:1px solid #edf1f5;display:flex;align-items:center;justify-content:center;background:#fafcfe;color:#8291a2;font-size:13px;position:relative}.dots{position:absolute;left:17px;display:flex;gap:7px}.dots i{display:block;width:7px;height:7px;border-radius:50%;background:#d4dfe9}
 iframe{display:block;border:0;width:1200px;height:636.6667px;background:white;transform:scale(1.2);transform-origin:top left}
-.caption{position:absolute;top:964px;left:160px;right:160px;text-align:center;font-size:25px;line-height:1.5;color:#416581}
-.disclosure{position:absolute;right:40px;bottom:21px;font-size:15px;color:#6e8194}.rail{position:absolute;bottom:0;height:4px;background:#00529b;width:0;transition:width 1s linear}
 .cover{position:absolute;inset:0;background:#edf4fb;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10;opacity:1;transition:opacity .55s ease;pointer-events:none}.cover.hidden{opacity:0}
-.cover img{width:124px;height:124px;object-fit:contain;margin-bottom:30px}.cover .name{font-size:25px;color:#00529b;letter-spacing:1px;margin-bottom:18px}.cover h2{font-size:70px;line-height:1.4;font-weight:600;letter-spacing:-2px;margin:0;text-align:center}.cover p{font-size:26px;color:#697687;margin:26px 0 0}.cover .play{margin-top:40px;border:1px solid #b6cbe0;border-radius:99px;padding:12px 26px;font-size:20px;color:#00529b;background:#fff9}.cover .foot{font-size:16px;position:absolute;bottom:38px;color:#8291a2}
+.cover img{width:124px;height:124px;object-fit:contain;margin-bottom:30px}.cover .name{font-size:42px;color:#00529b}
 #cursor{position:absolute;left:0;top:0;width:28px;height:34px;z-index:8;pointer-events:none;opacity:0;transform:translate(1000px,700px);transition:transform .32s ease,opacity .2s}#cursor svg{filter:drop-shadow(0 2px 2px #0003)}#pulse{position:absolute;width:42px;height:42px;border:2px solid #00529b;border-radius:50%;left:-16px;top:-16px;opacity:0}#pulse.click{animation:click .5s ease-out}@keyframes click{from{opacity:.65;transform:scale(.5)}to{opacity:0;transform:scale(1.6)}}
 </style>
-<div class="top"><h1 id="headline">校园问题，直接问。</h1><div class="brand"><img src="http://127.0.0.1:5178/danta-logo.webp" alt="">Ask Danta</div></div>
-<div class="window"><div class="chrome"><span class="dots"><i></i><i></i><i></i></span>问问旦挞 · 产品体验演示</div><iframe id="app" src="http://127.0.0.1:5178/"></iframe></div>
-<div class="caption" id="caption">公开信息与同学经验，从一个问题开始。</div>
-<div class="disclosure">演示数据 · 非实际校园信息 · 演示响应时长不代表实际速度</div><div class="rail" id="rail"></div>
-<div class="cover" id="cover"><img src="http://127.0.0.1:5178/danta-logo.webp" alt="旦挞小猫"><div class="name">Ask Danta · 问问旦挞</div><h2 id="cover-title">校园里的问题，<br>问问旦挞。</h2><p id="cover-subtitle">查资料，看依据，接着问。</p><div class="play" id="cover-play">▶  运行体验演示</div><div class="foot">独立衍生应用 · Logo 来自旦夕开发组</div></div>
+<div class="window"><div class="chrome"><span class="dots"><i></i><i></i><i></i></span>Ask Danta</div><iframe id="app" src="http://127.0.0.1:5178/"></iframe></div>
+<div class="cover" id="cover"><img src="http://127.0.0.1:5178/danta-logo.webp" alt="旦挞小猫"><div class="name">Ask Danta · 问问旦挞</div></div>
 <div id="cursor"><span id="pulse"></span><svg viewBox="0 0 28 34" width="28" height="34"><path d="M3 2L4 27L10 21L15 32L20 30L15 19L25 19Z" fill="white" stroke="#234563" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
 </html>

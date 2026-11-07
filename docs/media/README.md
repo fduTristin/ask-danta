@@ -1,6 +1,6 @@
 # 产品演示素材
 
-- `ask-danta-demo.mp4`：1920 × 1080、30 fps、H.264，带画面字幕的无声产品演示。
+- `ask-danta-demo.mp4`：1920 × 1080、30 fps、H.264，无额外字幕的界面操作演示，仅保留产品名称片头与片尾，无声。
 - `ask-danta-preview.gif`：8 秒循环预览，供项目 README 展示。
 - `ask-danta-poster.png`：静态封面，可用于介绍页面或分享。
 

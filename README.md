@@ -10,7 +10,7 @@ Ask Danta 结合公开网页与经授权访问的旦挞茶楼（树洞）资料�
 
 [![Ask Danta 产品演示](docs/media/ask-danta-preview.gif)](docs/media/ask-danta-demo.mp4)
 
-[观看完整视频](docs/media/ask-danta-demo.mp4) · 约 38 秒 · 1080p · 中文字幕
+[观看完整视频](docs/media/ask-danta-demo.mp4) · 约 35 秒 · 1080p · 界面操作录屏
 
 演示涵盖数据源选择、实时执行记录、引用查证、树洞配图、多轮追问及历史会话管理。视频录制自实际界面，使用合成资料；示例内容及响应时长不代表真实校园信息或服务性能。素材与复现方法见[演示说明](docs/media/README.md)。
 
