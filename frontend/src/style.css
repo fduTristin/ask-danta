@@ -36,13 +36,17 @@ label { display: block; }
 .history { flex: 1; min-height: 0; overflow: auto; padding-bottom: 12px; scrollbar-width: thin; }
 .history-label { font-size: 12px; color: #627e9b; padding: 0 12px; margin-bottom: 12px; }
 .history-empty { font-size: 12px; color: var(--muted); padding: 4px 12px; }
-.history-row { display: flex; flex-wrap: wrap; align-items: center; border-radius: 10px; margin: 4px 0; }
+.history-row { display: flex; align-items: center; border-radius: 10px; margin: 4px 0; }
 .history-row.selected { background: var(--selected); color: var(--blue); }
 .history-title { flex: 1; min-width: 0; justify-content: flex-start; text-align: left; font-size: 13px; padding: 10px 10px 10px 12px; }
 .history-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.history-more { width: 32px; padding: 5px; }
-.history-menu { flex-basis: 100%; padding: 4px 8px; display: flex; gap: 5px; border-top: 1px solid #cddded; }
-.history-menu button { font-size: 12px; }
+.history-more { width: 32px; padding: 5px; flex-shrink: 0; }
+.history-more[aria-expanded="true"] { background: #dbeafb; color: var(--blue); }
+.history-menu { position: fixed; z-index: 40; width: 184px; padding: 5px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--border); border-radius: 12px; background: #fff; box-shadow: 0 8px 28px #182c4324, 0 2px 6px #182c430d; color: #222c39; }
+.history-menu button { width: 100%; justify-content: flex-start; gap: 11px; min-height: 40px; padding: 8px 12px; font-size: 13px; border-radius: 7px; }
+.history-menu button:focus-visible { outline-offset: -2px; }
+.history-menu .history-delete { color: #a03330; }
+.history-menu .history-delete:hover { color: #8e2c29; background: #fff0ef; }
 .settings-button { justify-content: flex-start; color: var(--muted); font-size: 13px; flex-shrink: 0; }
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .topbar { display: flex; align-items: center; flex-shrink: 0; gap: 10px; padding: 12px 22px; height: 66px; color: var(--muted); }

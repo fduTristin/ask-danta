@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Ellipsis, PanelLeft, Pencil, Settings2, Square, SquarePen, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, PanelLeft, Settings2, Square, SquarePen } from 'lucide-react';
 import { Answer } from './Answer';
 import { RunProgress } from './RunProgress';
 import { CampusLogin } from './CampusLogin';
 import { Modal } from './Modal';
 import { SourcePicker } from './SourcePicker';
+import { HistoryMenu } from './HistoryMenu';
 import { api, ApiError, errorText } from './api';
 import type { Health, Message, Progress, Session, SourceMode, Summary } from './api';
 
@@ -40,6 +41,7 @@ export function App() {
   const [action, setAction] = useState<Action | null>(null);
   const [rename, setRename] = useState('');
   const [menu, setMenu] = useState<string>();
+  useEffect(() => { setMenu(undefined); }, [sidebar, mobile]);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -310,8 +312,7 @@ export function App() {
     <button className="new-chat" onClick={() => navigate()} disabled={working || !ready}><SquarePen />新对话</button>
     <nav className="history" aria-label="历史会话"><p className="history-label">最近对话</p>{!list.length && <p className="history-empty">开始聊天后，对话会保存在这里。</p>}{list.map(item => <div className={`history-row ${session?.session_id === item.session_id ? 'selected' : ''}`} key={item.session_id}>
       <button className="history-title" aria-current={session?.session_id === item.session_id ? 'page' : undefined} title={item.title} onClick={() => navigate(item.session_id)} disabled={working}><span>{item.title}</span>{item.busy && <small aria-label="正在回答">…</small>}</button>
-      <button className="history-more" aria-label={`管理对话：${item.title}`} aria-expanded={menu === item.session_id} onClick={() => setMenu(menu === item.session_id ? undefined : item.session_id)} disabled={working}><Ellipsis /></button>
-      {menu === item.session_id && <div className="history-menu"><button onClick={() => beginAction('rename', item)}><Pencil />重命名</button><button onClick={() => beginAction('delete', item)}><Trash2 />删除</button></div>}
+      <HistoryMenu title={item.title} open={menu === item.session_id} disabled={working} onOpenChange={open => setMenu(open ? item.session_id : undefined)} onAction={kind => beginAction(kind, item)} />
     </div>)}</nav>
     <button className="settings-button" onClick={() => { setSettingsOpen(true); if (mobile) setSidebar(false); }}><Settings2 />设置</button>
   </>;

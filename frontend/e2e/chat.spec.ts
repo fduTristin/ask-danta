@@ -101,7 +101,7 @@ test('desktop layout, cited Markdown, refresh, rename and deletion', async ({ pa
   await page.reload();
   await expect(page.locator('.assistant')).toHaveCount(1);
   await page.getByRole('button', { name: '管理对话：查合成来源' }).click();
-  await page.getByRole('button', { name: '重命名', exact: true }).click();
+  await page.getByRole('menuitem', { name: '重命名', exact: true }).click();
   await page.getByRole('textbox', { name: '对话名称' }).fill('办事资料');
   await page.getByRole('button', { name: '保存名称' }).click();
   await expect(page.getByRole('button', { name: '办事资料', exact: true })).toBeVisible();
@@ -111,7 +111,7 @@ test('desktop layout, cited Markdown, refresh, rename and deletion', async ({ pa
   await expect(page.getByRole('button', { name: '新对话', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '展开历史会话' }).click();
   await page.getByRole('button', { name: '管理对话：办事资料' }).click();
-  await page.getByRole('button', { name: '删除', exact: true }).click();
+  await page.getByRole('menuitem', { name: '删除', exact: true }).click();
   await page.getByRole('button', { name: '确认删除' }).click();
   await expect(page.getByRole('heading', { name: '今天，有什么校园问题？' })).toBeVisible();
   await expect(page.locator('.history-row')).toHaveCount(0);
@@ -158,6 +158,64 @@ test('drafts and source preference stay with their conversation', async ({ page 
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toHaveValue('未发送的追问');
   await expect(page.getByRole('button', { name: '搜索范围：仅网页', exact: true })).toBeVisible();
   await expect(page.locator('.user')).toHaveCount(1);
+});
+
+test('history actions float without resizing rows and remain usable in the mobile drawer', async ({ page, request }) => {
+  for (let index = 1; index <= 16; index++) {
+    const session = await (await request.post('/api/sessions')).json();
+    await request.patch(`/api/sessions/${session.session_id}`, { data: { title: `校园问题 ${index}` } });
+  }
+  await page.reload();
+  const menu = page.getByRole('menu', { name: /^对话操作：/ });
+  for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }, { width: 320, height: 450 }]) {
+    await page.setViewportSize(viewport);
+    if (viewport.width < 760) {
+      if (!await page.getByRole('dialog', { name: '历史会话' }).isVisible()) await page.getByRole('button', { name: '展开历史会话' }).click();
+      await expect(page.getByRole('dialog', { name: '历史会话' })).toBeVisible();
+    }
+    const row = page.locator('.history-row').last();
+    const trigger = row.getByRole('button', { name: /^管理对话：/ });
+    await trigger.scrollIntoViewIfNeeded();
+    const before = (await row.boundingBox())!;
+    await trigger.click();
+    await expect(menu).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: '重命名', exact: true })).toBeFocused();
+    const after = (await row.boundingBox())!;
+    expect(after.height).toBe(before.height);
+    expect(after.y).toBe(before.y);
+    const box = (await menu.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+    if (viewport.width > 320) await page.screenshot({ path: `../.private/verification/stage6/history-menu-${viewport.width}.png` });
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitem', { name: '删除', exact: true })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    if (viewport.width < 760) await expect(page.getByRole('dialog', { name: '历史会话' })).toBeVisible();
+    await trigger.press('ArrowUp');
+    await expect(page.getByRole('menuitem', { name: '删除', exact: true })).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(page.getByRole('menuitem', { name: '重命名', exact: true })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(menu).toHaveCount(0);
+    await trigger.click();
+    await page.locator('.brand').click();
+    await expect(menu).toHaveCount(0);
+    await trigger.click();
+    await page.locator('.history').evaluate(element => element.dispatchEvent(new Event('scroll')));
+    await expect(menu).toHaveCount(0);
+  }
+  await page.locator('.history-more').last().click();
+  await page.getByRole('menuitem', { name: '重命名', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '重命名对话' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '历史会话' })).toHaveCount(0);
+  await page.getByRole('textbox', { name: '对话名称' }).fill('菜单修改成功');
+  await page.getByRole('button', { name: '保存名称' }).click();
+  await page.getByRole('button', { name: '展开历史会话' }).click();
+  await expect(page.getByRole('button', { name: '菜单修改成功', exact: true })).toBeVisible();
 });
 
 test('campus Markdown images load on expansion and handle broken or unsupported addresses', async ({ page }) => {
