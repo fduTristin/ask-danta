@@ -160,6 +160,47 @@ test('drafts and source preference stay with their conversation', async ({ page 
   await expect(page.locator('.user')).toHaveCount(1);
 });
 
+test('campus Markdown images load on expansion and handle broken or unsupported addresses', async ({ page }) => {
+  const imageUrl = 'https://image.fduhole.com/i/2024/08/25/66caeb1790d81.jpg';
+  const brokenUrl = 'https://image.fduhole.com/i/2024/08/25/missing.png';
+  const requested: string[] = [];
+  page.on('request', request => { if (request.resourceType() === 'image') requested.push(request.url()); });
+  await page.route('https://image.fduhole.com/**', route => route.request().url() === imageUrl
+    ? route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#edf4fb"/><rect x="32" y="32" width="576" height="296" rx="8" fill="white"/><text x="60" y="95" font-family="sans-serif" font-size="26" fill="#00529b">Synthetic campus attachment</text><path d="M60 140H570M60 200H570M60 260H570" stroke="#dbeafb" stroke-width="10"/></svg>' })
+    : route.fulfill({ status: 404, body: 'not found' }));
+  await page.route('**/api/sessions/*', async route => {
+    const response = await route.fetch();
+    const data = await response.json();
+    if (route.request().method() === 'GET' && Array.isArray(data.messages)) {
+      for (const message of data.messages) {
+        if (message.role !== 'assistant') continue;
+        message.content = '参考树洞配图[C1]。';
+        message.sources = [{ id: 'C1', source: 'campus', title: '合成图片资料', snippet: `**配图说明**\n\n![](${imageUrl})\n\n![失效配图](${brokenUrl})\n\n![外站](https://example.org/blocked.png)\n\n![伪装域名](https://image.fduhole.com.example.org/blocked.png)\n\n![内网](http://127.0.0.1/private.png)\n\n\`![](${imageUrl})\`\n\n<img src="https://example.org/raw.png">`, hole_id: 12, floor_id: 34, is_mock: false, published_at: null, truncated: false }];
+      }
+    }
+    await route.fulfill({ response, json: data });
+  });
+  await ask(page, '检查配图');
+  expect(requested.filter(url => url.startsWith('https://image.fduhole.com/'))).toHaveLength(0);
+  await page.getByRole('button', { name: '查看引用 C1', exact: true }).click();
+  const picture = page.getByRole('img', { name: '树洞帖子配图', exact: true });
+  await picture.scrollIntoViewIfNeeded();
+  await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(640);
+  await expect(picture).toHaveAttribute('referrerpolicy', 'no-referrer');
+  await expect(page.getByText('失效配图加载失败', { exact: false })).toBeVisible();
+  await expect(page.locator('.source-markdown code')).toHaveText(`![](${imageUrl})`);
+  expect(requested.filter(url => /blocked\.png|raw\.png|private\.png/.test(url))).toEqual([]);
+  for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await picture.scrollIntoViewIfNeeded();
+    const box = (await picture.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `../.private/verification/stage6/campus-image-${viewport.width}.png` });
+  }
+});
+
 test('switching cancels a running answer and preserves its question', async ({ page }) => {
   await page.getByRole('textbox', { name: '你的问题或追问' }).fill('等待合成回答');
   await page.getByRole('button', { name: '发送', exact: true }).click();
@@ -208,8 +249,10 @@ test('mobile drawer, login failure, safe Markdown and keyboard', async ({ page }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: '../.private/verification/stage6/mobile-answer.png' });
   await page.setViewportSize({ width: 390, height: 450 });
-  const box = await page.getByRole('textbox', { name: '你的问题或追问' }).boundingBox();
-  expect(box!.y + box!.height).toBeLessThan(450);
+  await expect.poll(async () => {
+    const box = (await page.getByRole('textbox', { name: '你的问题或追问' }).boundingBox())!;
+    return box.y + box.height;
+  }).toBeLessThan(450);
 });
 
 test('reading old messages does not jump on a new response', async ({ page }) => {

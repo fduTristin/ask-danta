@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Check, Copy, Link, X } from 'lucide-react';
 import type { Message, Source } from './api';
 import { RunProgress } from './RunProgress';
+import { CampusImage } from './CampusImage';
 
 type MarkdownNode = { type: string; value?: string; url?: string; children?: MarkdownNode[] };
 // Transform plain text citations only; never rewrite code or an existing link.
@@ -34,6 +35,16 @@ function webUrl(url?: string) {
   try { const value = new URL(url || ''); return ['https:', 'http:'].includes(value.protocol) ? value.href : undefined; }
   catch { return undefined; }
 }
+
+// Stable renderers preserve image loading/error state when the chat layout resizes.
+const sourceComponents: Components = {
+  img: ({ src, alt }) => <CampusImage src={src} alt={alt} />,
+  a: ({ href, children }) => {
+    const safe = webUrl(href);
+    return safe ? <a href={safe} target="_blank" rel="noreferrer noopener">{children}</a> : <span>{children}</span>;
+  },
+  table: ({ children }) => <div className="table-scroll"><table>{children}</table></div>,
+};
 
 export function Answer({ message, index }: { message: Message; index: number }) {
   const [open, setOpen] = useState(false);
@@ -94,7 +105,7 @@ function SourceCard({ source, selected }: { source: Source; selected: boolean })
   return <section className={`source-card ${selected ? 'selected' : ''}`} data-source={source.id} tabIndex={-1}>
     <div className="source-kind">{source.id} · {source.source === 'campus' ? '树洞经验' : source.is_mock ? '合成样例' : '公开网页'} · {source.published_at || '日期未知'}</div>
     <strong>{source.source === 'campus' ? `树洞 #${source.hole_id} · 楼层 ID ${source.floor_id}` : url ? <a href={url} target="_blank" rel="noreferrer noopener">{source.title}</a> : source.title}</strong>
-    <p>{source.snippet}</p>
+    {source.source === 'campus' ? <div className="markdown source-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={sourceComponents}>{source.snippet}</ReactMarkdown></div> : <p>{source.snippet}</p>}
     <small>{source.source === 'campus' ? '个人经验，不代表官方规定；未确认已读完整帖子。' : source.page_read ? source.page_truncated ? '已读取部分网页正文。' : '已读取网页文本。' : '当前依据为搜索摘要。'}{source.truncated ? ' 内容已截断。' : ''}{source.redacted ? ' 已做基础脱敏。' : ''}</small>
   </section>;
 }
