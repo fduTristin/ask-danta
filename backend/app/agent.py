@@ -68,6 +68,7 @@ class Session:
     source_preference: str = "auto"
     pending_question: str | None = None
     interrupted: bool = False
+    progress: dict | None = None
 
     def summary(self) -> dict:
         return {"session_id": self.id, "title": self.title, "created_at": self.created_at,
@@ -76,7 +77,7 @@ class Session:
 
     def public(self) -> dict:
         return {**self.summary(), "messages": self.messages, "sources": self.sources,
-                "pending_question": self.pending_question}
+                "pending_question": self.pending_question, "progress": self.progress}
 
 
 def fallback(reason: str, sources: list[dict]) -> str:

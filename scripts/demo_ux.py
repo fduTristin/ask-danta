@@ -20,6 +20,8 @@ async def upstream(request: httpx.Request) -> httpx.Response:
             return httpx.Response(401, json={"detail": "synthetic invalid credentials"})
         return httpx.Response(200, json={"access": "synthetic-access", "refresh": "synthetic-refresh"})
     if request.url.host == "api.tavily.com":
+        if '执行记录' in request.content.decode():
+            await asyncio.sleep(2)
         return httpx.Response(200, json={"results": [{"title": "合成验收来源", "url": "https://example.org/ux-verification", "content": "合成验收资料：提交申请后查看办理进度，不代表真实学校政策。"}]})
     if request.url.host != "api.deepseek.com":
         raise AssertionError("Unexpected fixture endpoint")
@@ -27,6 +29,8 @@ async def upstream(request: httpx.Request) -> httpx.Response:
     messages = body['messages']
     user_index = max(i for i, item in enumerate(messages) if item['role'] == 'user')
     question = messages[user_index]['content']
+    if '执行记录' in question:
+        await asyncio.sleep(2)
     if '等待' in question:
         await asyncio.sleep(20)
     if '失败一次' in question and not getattr(upstream, 'failed_once', False):
@@ -36,6 +40,8 @@ async def upstream(request: httpx.Request) -> httpx.Response:
     tool = next((item for item in messages[user_index:] if item['role'] == 'tool'), None)
     if needs_search and not tool and body.get('tools'):
         message = {"role": "assistant", "content": None, "tool_calls": [{"id": "fixture-search", "type": "function", "function": {"name": "search_web", "arguments": '{"query":"合成验收"}'}}]}
+        if '执行记录' in question:
+            message['tool_calls'][0]['function']['arguments'] = '{"query":"执行记录"}'
     else:
         citation = ''
         if tool:

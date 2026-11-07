@@ -83,6 +83,7 @@
 前端使用 `fetch` 读取 POST 响应体，每帧格式为 `data: {JSON}\n\n`。事件包括：
 
 - `start`、`model_start`：本轮开始与模型工作状态。
+- 状态变化事件额外携带 `progress` 字段（不改变原有事件顺序）：供界面展示的执行记录快照，含 `started_at`（Unix 毫秒）、`elapsed_ms`、`status` 和 `steps`。步骤含固定中文 `label`、状态、相对开始时间、完成耗时，以及工具名与调用 ID；结果摘要仅保留数量／读取完成状态，不保存原始参数、正文或内部思考。会话 GET 的 `progress` 支持刷新后轮询恢复，最终 `message.progress` 随回答持久化。旧消息没有该字段时仍正常展示。停止后当前记录标记为 `interrupted`，不会添加伪造回答。
 - `tool_start`：调用 ID 和工具名；`tool_complete`：同一 ID 和工具结果，搜索返回 `query/results`，读取返回 `source_id/url/title/text/truncated`；`tool_error`：同一 ID 和脱敏错误。
 - `review_start`：正在核对候选答案，候选文本不展示、不写入历史；核对可在原预算内触发补查。
 - `budget`：停止进一步检索的原因；`error`：模型或总预算失败。

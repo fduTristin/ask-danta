@@ -76,6 +76,11 @@ class SessionStore:
                 data = json.loads(payload)
                 data["busy"] = False
                 data["interrupted"] = bool(data.get("pending_question"))
+                if data["interrupted"] and data.get("progress"):
+                    data["progress"]["status"] = "interrupted"
+                    for step in data["progress"]["steps"]:
+                        if step["status"] == "running":
+                            step["status"] = "interrupted"
                 session = Session(**data)
                 sessions[sid] = session
             return sessions

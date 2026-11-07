@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Check, Copy, Link, X } from 'lucide-react';
 import type { Message, Source } from './api';
+import { RunProgress } from './RunProgress';
 
 type MarkdownNode = { type: string; value?: string; url?: string; children?: MarkdownNode[] };
 // Transform plain text citations only; never rewrite code or an existing link.
@@ -64,6 +65,7 @@ export function Answer({ message, index }: { message: Message; index: number }) 
   }
   return <article className="message assistant" ref={article}>
     <div className="assistant-label"><img src="/danta-logo.webp" alt="" />问问旦挞</div>
+    {message.progress && <RunProgress progress={message.progress} />}
     <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm, citations]} skipHtml components={{
       a: ({ href, children }) => {
         const id = href?.match(/^#citation-([WC]\d+)$/)?.[1];

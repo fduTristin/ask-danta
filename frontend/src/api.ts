@@ -1,8 +1,10 @@
 export type SourceMode = 'auto' | 'web' | 'all';
 export type Source = { id: string; source?: 'web' | 'campus'; title: string; url?: string; snippet: string; published_at: string | null; is_mock: boolean; truncated: boolean; page_read?: boolean; page_truncated?: boolean; hole_id?: number; floor_id?: number; thread_read?: boolean; redacted?: boolean };
-export type Message = { role: 'user' | 'assistant'; content: string; sources?: Source[]; warnings?: string[]; end_reason?: string; status?: string };
+export type ProgressStep = { id: string; label: string; detail?: string; tool?: string; status: 'running' | 'complete' | 'error' | 'notice' | 'interrupted'; started_ms: number; duration_ms?: number };
+export type Progress = { started_at: number; elapsed_ms: number; status: 'running' | 'complete' | 'error' | 'incomplete' | 'interrupted'; steps: ProgressStep[] };
+export type Message = { role: 'user' | 'assistant'; content: string; sources?: Source[]; warnings?: string[]; end_reason?: string; status?: string; progress?: Progress };
 export type Summary = { session_id: string; title: string; updated_at: string; busy: boolean; source_preference: SourceMode; interrupted: boolean };
-export type Session = Summary & { messages: Message[]; sources: Source[]; pending_question: string | null };
+export type Session = Summary & { messages: Message[]; sources: Source[]; pending_question: string | null; progress?: Progress | null };
 export type Health = { stage: number; model: { configured: boolean }; search: { is_mock: boolean }; campus: { tools_enabled: boolean; credentials_present: boolean; auth_state: string } };
 
 export class ApiError extends Error {

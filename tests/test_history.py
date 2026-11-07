@@ -10,6 +10,7 @@ from app.agent import Session
 from app.config import Settings
 from app.main import create_app
 from app.sessions import SessionStore, SessionStorageError
+from app.progress import Progress
 
 
 def settings(tmp_path):
@@ -35,6 +36,13 @@ def test_restart_history_preferences_rename_and_delete(tmp_path):
         assert final['metrics']['model_calls'] == 1
         assert final['metrics']['tool_calls'] == final['metrics']['campus_pages'] == 0
         assert final['metrics']['budget_reasons'] == []
+        progress = original['messages'][-1]['progress']
+        assert progress == final['message']['progress']
+        assert progress['status'] == 'complete'
+        assert progress['steps'][0]['label'] == '理解问题与已有资料'
+        assert progress['steps'][0]['status'] == 'complete'
+        frames = [json.loads(frame[6:]) for frame in result.text.strip().split('\n\n')]
+        assert next(frame for frame in frames if frame['type'] == 'model_start')['progress']['steps'][0]['status'] == 'running'
         assert original['source_preference'] == 'web'
         assert client.patch(f'/api/sessions/{sid}', json={'title': '江湾办事'}).status_code == 200
         assert client.patch(f'/api/sessions/{sid}', json={'title': '  '}).status_code == 422
@@ -82,6 +90,9 @@ def test_interrupted_turn_restores_without_fabricating_answer(tmp_path):
     config = settings(tmp_path)
     store = SessionStore(config.sessions_path)
     session = Session(title='未完成的问题', pending_question='帮我查一下', busy=True)
+    progress = Progress()
+    progress.update({'type': 'model_start'})
+    session.progress = progress.value
     store.save(session)
     store.close()
     with TestClient(create_app(config)) as client:
@@ -89,6 +100,8 @@ def test_interrupted_turn_restores_without_fabricating_answer(tmp_path):
         assert not restored['busy'] and restored['interrupted']
         assert restored['pending_question'] == '帮我查一下'
         assert restored['messages'] == []
+        assert restored['progress']['status'] == 'interrupted'
+        assert restored['progress']['steps'][0]['status'] == 'interrupted'
 
 
 def test_failed_final_save_does_not_claim_success(tmp_path, monkeypatch):
@@ -123,11 +136,17 @@ def test_cancel_releases_and_delete_cannot_be_resurrected(tmp_path):
         with ThreadPoolExecutor() as pool:
             turn = pool.submit(client.post, f'/api/sessions/{sid}/chat', json={'message': '你好'})
             assert entered.wait(5)
+            running = client.get(f'/api/sessions/{sid}').json()['progress']
+            assert running['status'] == 'running'
+            assert running['steps'][0]['status'] == 'running'
             assert client.delete(f'/api/sessions/{sid}').status_code == 409
             assert client.patch(f'/api/sessions/{sid}', json={'title': '忙碌时修改'}).status_code == 409
             assert client.post(f'/api/sessions/{sid}/cancel').status_code == 202
             assert cancelled.wait(5)
             turn.result(timeout=5)
-        assert not client.get(f'/api/sessions/{sid}').json()['busy']
+        stopped = client.get(f'/api/sessions/{sid}').json()
+        assert not stopped['busy']
+        assert stopped['progress']['status'] == 'interrupted'
+        assert stopped['progress']['steps'][0]['status'] == 'interrupted'
         assert client.delete(f'/api/sessions/{sid}').status_code == 204
         assert client.get(f'/api/sessions/{sid}').status_code == 404

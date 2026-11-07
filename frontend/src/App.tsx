@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Ellipsis, PanelLeft, Pencil, Settings2, Square, SquarePen, Trash2 } from 'lucide-react';
 import { Answer } from './Answer';
+import { RunProgress } from './RunProgress';
 import { CampusLogin } from './CampusLogin';
 import { Modal } from './Modal';
 import { SourcePicker } from './SourcePicker';
 import { api, ApiError, errorText } from './api';
-import type { Health, Message, Session, SourceMode, Summary } from './api';
+import type { Health, Message, Progress, Session, SourceMode, Summary } from './api';
 
 type Action = { kind: 'rename' | 'delete' | 'clear' | 'switch'; target?: Summary; nextId?: string };
 type Run = { controller: AbortController; id?: string; done: Promise<void> };
@@ -24,6 +25,7 @@ export function App() {
   const [mode, setMode] = useState<SourceMode>('auto');
   const [busy, setBusy] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState('');
+  const [progress, setProgress] = useState<Progress | null>(null);
   const run = useRef<Run | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
@@ -152,7 +154,7 @@ export function App() {
   useLayoutEffect(() => {
     if (nearBottom.current) bottom.current?.scrollIntoView({ block: 'end' });
     else setShowLatest(true);
-  }, [messages.length, pendingQuestion, busy]);
+  }, [messages.length, pendingQuestion, busy, progress, session?.progress]);
   useEffect(() => {
     const viewport = window.visualViewport;
     const resize = () => document.documentElement.style.setProperty('--app-height', `${viewport?.height ?? window.innerHeight}px`);
@@ -220,7 +222,8 @@ export function App() {
       function accept(frame: string) {
         const data = frame.split('\n').filter(line => line.startsWith('data: ')).map(line => line.slice(6)).join('\n');
         if (!data) return;
-        const item = JSON.parse(data) as { type: string; message?: Message; error?: { message?: string } };
+        const item = JSON.parse(data) as { type: string; message?: Message; progress?: Progress; error?: { message?: string } };
+        if (item.progress) setProgress(item.progress);
         if (item.type === 'error') failure = item.error?.message || '本轮未完成，请重试。';
         if (item.type === 'final' && item.message) finalReceived = true;
       }
@@ -243,7 +246,7 @@ export function App() {
           else { editInput(question); drafts.current.set(id, question); setError(currentRun.controller.signal.aborted ? '' : failure); setInfo(currentRun.controller.signal.aborted ? '已停止，问题已保留，可修改后重新发送。' : ''); }
         } catch (cause) { setError(`${errorText(cause)} 请先重新检查会话，再发送问题。`); editInput(question); }
       } else { setError(failure); editInput(question); }
-      setPendingQuestion(''); setBusy(false); run.current = null;
+      setPendingQuestion(''); setBusy(false); setProgress(null); run.current = null;
       await refreshList().catch(() => {}); void refreshHealth();
     }
   }
@@ -264,7 +267,7 @@ export function App() {
         if (latest.busy) { install(latest); setInfo('这段对话仍在回答，可以等待或停止。'); return; }
       }
       if (effectiveMode === 'all' && !localStorage.getItem('danta-campus-consent')) { setConsentMode(mode); setConsent(true); return; }
-      setBusy(true); setPendingQuestion(input.trim()); nearBottom.current = true;
+      setProgress(null); setBusy(true); setPendingQuestion(input.trim()); nearBottom.current = true;
       const currentRun: Run = { controller: new AbortController(), id: sessionRef.current?.session_id, done: Promise.resolve() };
       run.current = currentRun;
       currentRun.done = executeTurn(currentRun, input.trim());
@@ -323,8 +326,9 @@ export function App() {
           <div className="messages" aria-label="对话内容">
             {!hasConversation && <div className="welcome"><img src="/danta-logo.webp" alt="" /><h1>今天，有什么校园问题？</h1></div>}
             {messages.map((message, index) => message.role === 'user' ? <article className="message user" key={`${session?.session_id}-${index}`}><p>{message.content}</p></article> : <Answer key={`${session?.session_id}-${index}`} message={message} index={index} />)}
-            {pendingQuestion && <article className="message user pending"><p>{pendingQuestion}</p></article>}
-            {activeBusy && <div className="waiting" role="status"><img src="/danta-logo.webp" alt="" />正在回答…</div>}
+            {(pendingQuestion || activeBusy && session?.pending_question) && <article className="message user pending"><p>{pendingQuestion || session?.pending_question}</p></article>}
+            {activeBusy && <RunProgress key={session?.session_id || 'new'} progress={busy ? progress : session?.progress} active />}
+            {session?.interrupted && !activeBusy && session.progress && <RunProgress progress={session.progress} />}
             {session?.interrupted && !activeBusy && <p className="notice interrupted">上次回答未完成，问题已恢复到输入框，可修改后重新发送。</p>}
             <div ref={bottom} />
           </div>

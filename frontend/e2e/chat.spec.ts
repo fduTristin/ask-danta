@@ -58,6 +58,31 @@ test('source menu supports keyboard selection and stays within desktop and narro
   await expect(trigger).not.toBeFocused();
 });
 
+test('live execution steps update before the answer and survive refresh', async ({ page }) => {
+  await page.getByRole('textbox', { name: '你的问题或追问' }).fill('查执行记录');
+  await page.getByRole('button', { name: '发送', exact: true }).click();
+  const progress = page.getByRole('region', { name: '回答执行记录' });
+  await expect(progress.getByRole('status')).toHaveText('理解问题与已有资料');
+  await progress.getByRole('button').click();
+  await expect(progress.getByRole('status')).toHaveText('搜索公开网页');
+  await expect(page.locator('.assistant')).toHaveCount(0);
+  for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `../.private/verification/stage6/progress-${viewport.width}.png` });
+  }
+  await expect(progress.getByText('返回 1 条资料')).toBeVisible();
+  await expect(page.locator('.assistant')).toHaveCount(1);
+  await expect(progress.getByRole('button')).toHaveAttribute('aria-expanded', 'false');
+  await progress.getByRole('button').click();
+  await expect(progress.locator('.progress-step')).toHaveCount(3);
+  await expect(progress.getByText('搜索公开网页', { exact: true })).toBeVisible();
+  await page.reload();
+  await progress.getByRole('button').click();
+  await expect(progress.getByText('返回 1 条资料')).toBeVisible();
+  await expect(progress.locator('.step-running')).toHaveCount(0);
+});
+
 test('desktop layout, cited Markdown, refresh, rename and deletion', async ({ page, context }) => {
   await page.setViewportSize({ width: 1440, height: 960 });
   await expect(page).toHaveTitle('Ask Danta');
@@ -115,6 +140,7 @@ test('switching cancels a running answer and preserves its question', async ({ p
   await expect(page.getByRole('heading', { name: '今天，有什么校园问题？' })).toBeVisible();
   await page.getByRole('button', { name: '等待合成回答', exact: true }).click();
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toHaveValue('等待合成回答');
+  await expect(page.getByRole('region', { name: '回答执行记录' }).getByRole('button')).toContainText('回答已停止');
   await expect(page.locator('.assistant')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEnabled();
 });
@@ -186,6 +212,7 @@ test('restoring a busy conversation clears the submitted question when it comple
   await page.evaluate(id => localStorage.setItem('danta-current-session', id), session.session_id);
   await page.reload();
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toHaveValue('等待恢复中的回答');
+  await expect(page.getByRole('region', { name: '回答执行记录' }).getByRole('status')).toHaveText('理解问题与已有资料');
   await expect(page.getByRole('button', { name: '停止回答' })).toBeVisible();
   await completion;
   await expect(page.locator('.assistant')).toHaveCount(1);

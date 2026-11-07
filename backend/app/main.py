@@ -19,6 +19,7 @@ from .agent import Agent, ChatRequest, Session
 from .campus import CampusService, CampusPage, CampusSearchRequest, CampusThreadRequest
 from .campus_auth import CampusError, CampusLoginRequest
 from .sessions import SessionStore, SessionStorageError, SessionUpdate
+from .progress import Progress
 
 
 def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
@@ -177,6 +178,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
         changed.sources.clear()
         changed.pending_question = None
         changed.interrupted = False
+        changed.progress = None
         changed.updated_at = datetime.now(timezone.utc).isoformat()
         app.state.store.save(changed)
         session.__dict__.update(changed.__dict__)
@@ -207,6 +209,8 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
         if not settings.model_api_key.get_secret_value():
             raise ModelError("model_not_configured", "请在本地 .env 填写 MODEL_API_KEY 并重启服务。", 503)
         before = deepcopy(session)
+        progress = Progress()
+        session.progress = progress.value
         session.pending_question = body.message
         session.interrupted = False
         session.source_preference = body.source_preference
@@ -231,6 +235,8 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                 released = True
                 session.busy = False
                 session.interrupted = bool(session.pending_question)
+                if session.interrupted:
+                    progress.update({"type": "interrupted"})
                 app.state.active_tasks.pop(session.id, None)
                 app.state.cancellations.pop(session.id, None)
                 try:
@@ -246,7 +252,9 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                 if cancellation.is_set():
                     return
                 async for event in events:
+                    changed = progress.update(event)
                     if event["type"] == "final":
+                        event["message"]["progress"] = deepcopy(progress.value)
                         session.pending_question = None
                         session.interrupted = False
                         session.updated_at = datetime.now(timezone.utc).isoformat()
@@ -260,6 +268,8 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                             session.pending_question = body.message
                             yield "data: " + json.dumps({"type": "error", "error": {"message": str(exc)}}, ensure_ascii=False) + "\n\n"
                             return
+                    if changed:
+                        event["progress"] = progress.value
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
             except asyncio.CancelledError:
                 # Explicit stop ends the SSE response cleanly; disconnect cancellation
