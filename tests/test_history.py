@@ -104,6 +104,26 @@ def test_interrupted_turn_restores_without_fabricating_answer(tmp_path):
         assert restored['progress']['steps'][0]['status'] == 'interrupted'
 
 
+def test_restore_missing_lowercase_sources_without_crossing_source_permissions(tmp_path):
+    store = SessionStore(settings(tmp_path).sessions_path)
+    source = {'id': 'C121', 'source': 'campus', 'is_mock': False, 'snippet': '合成历史资料'}
+    session = Session(sources=[source, {'id': 'W2', 'source': 'web', 'is_mock': True}])
+    session.messages = [
+        {'role': 'assistant', 'content': '已有经验[c121]，不存在[c999]，合成[w2]', 'sources': [], 'source_mode': 'all'},
+        {'role': 'assistant', 'content': '不能补入校内内容[c121]', 'sources': [], 'source_mode': 'web'},
+        {'role': 'assistant', 'content': '已有关联[c121]', 'sources': [{**source, 'snippet': '保留当时的摘录'}]},
+    ]
+    store.save(session)
+    restored = store.load()[session.id]
+    assert restored.messages[0]['sources'] == [source]
+    assert restored.messages[1]['sources'] == []
+    assert restored.messages[2]['sources'][0]['snippet'] == '保留当时的摘录'
+    assert session.messages[0]['sources'] == []
+    store.save(restored)
+    assert store.load()[session.id].messages == restored.messages
+    store.close()
+
+
 def test_failed_final_save_does_not_claim_success(tmp_path, monkeypatch):
     with TestClient(create_app(settings(tmp_path), httpx.MockTransport(completion))) as client:
         sid = client.post('/api/sessions').json()['session_id']

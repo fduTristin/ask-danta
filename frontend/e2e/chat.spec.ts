@@ -117,6 +117,36 @@ test('desktop layout, cited Markdown, refresh, rename and deletion', async ({ pa
   await expect(page.locator('.history-row')).toHaveCount(0);
 });
 
+test('lowercase campus citations open real source cards and preserve code text', async ({ page }) => {
+  await page.route('**/api/sessions/*', async route => {
+    const response = await route.fetch();
+    const data = await response.json();
+    if (route.request().method() === 'GET' && Array.isArray(data.messages)) {
+      for (const message of data.messages) {
+        if (message.role !== 'assistant') continue;
+        message.content = '选课建议[c121]，另一处引用[C121]。不存在[c999]。代码 `[c121]`。';
+        message.sources = [{ id: 'C121', source: 'campus', title: '合成资料', snippet: '用于检查引用关联的合成摘录', hole_id: 12, floor_id: 34, is_mock: false, published_at: null, truncated: false }];
+      }
+    }
+    await route.fulfill({ response, json: data });
+  });
+  await ask(page, '检查引用');
+  const citations = page.getByRole('button', { name: '查看引用 C121', exact: true });
+  await expect(citations).toHaveCount(2);
+  await expect(page.locator('.markdown code')).toHaveText('[c121]');
+  await expect(page.getByRole('button', { name: '查看引用 C999', exact: true })).toHaveCount(0);
+  for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await citations.first().click();
+    await expect(page.locator('.source-card.selected')).toContainText('用于检查引用关联的合成摘录');
+    await page.screenshot({ path: `../.private/verification/stage6/citation-${viewport.width}.png` });
+    await page.getByRole('button', { name: '收起来源并返回回答' }).click();
+    await expect(citations.first()).toBeFocused();
+  }
+  await page.reload();
+  await expect(citations).toHaveCount(2);
+});
+
 test('drafts and source preference stay with their conversation', async ({ page }) => {
   await ask(page, '第一段聊天');
   await chooseSource(page, '仅网页');

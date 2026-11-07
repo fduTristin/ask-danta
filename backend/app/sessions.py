@@ -3,6 +3,8 @@
 from dataclasses import asdict
 import json
 import os
+import re
+from copy import deepcopy
 from pathlib import Path
 import sqlite3
 import subprocess
@@ -82,6 +84,18 @@ class SessionStore:
                         if step["status"] == "running":
                             step["status"] = "interrupted"
                 session = Session(**data)
+                # Older releases missed lowercase citations when attaching sources.
+                # Recover only existing, real evidence from this same conversation.
+                for message in session.messages:
+                    if message.get("role") != "assistant":
+                        continue
+                    missing = {sid.upper() for sid in re.findall(r"\[([wc][1-9][0-9]*)\]", message.get("content", ""))}
+                    missing -= {source["id"] for source in message.get("sources", [])}
+                    recovered = [deepcopy(source) for source in session.sources
+                                 if source["id"] in missing and not source.get("is_mock")
+                                 and not (message.get("source_mode") == "web" and source.get("source") == "campus")]
+                    if recovered:
+                        message.setdefault("sources", []).extend(recovered)
                 sessions[sid] = session
             return sessions
         except (sqlite3.Error, ValueError, TypeError):

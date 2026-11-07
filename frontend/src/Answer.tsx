@@ -16,9 +16,10 @@ function citations() {
         const text = child.value || '';
         const parts: MarkdownNode[] = [];
         let offset = 0;
-        for (const match of text.matchAll(/\[([WC]\d+)\]/g)) {
+        for (const match of text.matchAll(/\[([WwCc][1-9][0-9]*)\]/g)) {
+          const id = match[1].toUpperCase();
           parts.push({ type: 'text', value: text.slice(offset, match.index) });
-          parts.push({ type: 'link', url: `#citation-${match[1]}`, children: [{ type: 'text', value: match[1] }] });
+          parts.push({ type: 'link', url: `#citation-${id}`, children: [{ type: 'text', value: id }] });
           offset = match.index! + match[0].length;
         }
         parts.push({ type: 'text', value: text.slice(offset) });

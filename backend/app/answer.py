@@ -118,7 +118,7 @@ def requested_actions(question: str) -> set[str]:
 
 
 def citation_ids(text: str) -> set[str]:
-    return set(re.findall(r"\[([WC][1-9][0-9]*)\]", text))
+    return {sid.upper() for sid in re.findall(r"\[([WwCc][1-9][0-9]*)\]", text)}
 
 
 def character_limit(question: str) -> int | None:

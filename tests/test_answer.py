@@ -8,12 +8,33 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.agent import Agent, Session
-from app.answer import character_limit, review_payload
+from app.answer import answer_issues, character_limit, citation_ids, review_payload
 from app.main import create_app
 from app.model import ModelService
 from app.search import SearchService
 from test_chat import call, completion, events, search_result
 from test_quality import clean_config, config
+
+
+def test_lowercase_citations_resolve_and_unknown_ids_still_fail_validation():
+    assert citation_ids('[c121] [C121] [w2] [W3] [c0] [c01]') == {'C121', 'W2', 'W3'}
+    assert answer_issues('个人经验[c121]', {'C121'}, None) == []
+    assert answer_issues('未经查证[c999]', {'C121'}, None) == [{'code': 'unknown_citations', 'ids': ['C999']}]
+
+
+def test_lowercase_citations_attach_real_sources_to_final_answer():
+    count = 0
+    def handler(request):
+        nonlocal count
+        if request.url.host == 'api.tavily.com':
+            return search_result()
+        count += 1
+        return completion(None, [call()]) if count == 1 else completion('官网说明到江湾窗口 [w1]。')
+    with TestClient(create_app(config(answer_review_enabled=False), httpx.MockTransport(handler))) as client:
+        sid = client.post('/api/sessions').json()['session_id']
+        message = events(client, sid)[-1]['message']
+        assert message['status'] == 'complete'
+        assert [source['id'] for source in message['sources']] == ['W1']
 
 
 @pytest.mark.parametrize("question,expected", [
