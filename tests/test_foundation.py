@@ -139,7 +139,10 @@ def test_user_settings_ignore_env_and_deployment_variables_remain_supported(tmp_
     settings = Settings(_env_file=dotenv)
     assert settings.model_name == "deepseek-flash"
     assert not settings.model_api_key.get_secret_value()
-    assert settings.model_max_tokens == 4096
+    assert settings.model_max_tokens == 16384
+    assert settings.model_timeout_seconds == 120
+    assert settings.request_budget_seconds == 300
+    assert settings.model_reasoning_effort == 'low'
     assert settings.backend_port == 8100
     assert settings.auth_path == ROOT / ".private/campus-tokens.json"
     assert "file-secret" not in repr(settings)

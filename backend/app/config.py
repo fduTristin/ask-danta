@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     model_api_key: SecretStr = Field(default=SecretStr(""), max_length=8192)
     model_thinking: Literal["enabled", "disabled"] = "disabled"
     model_reasoning_effort: Literal["low", "high", "max"] = "low"
-    model_max_tokens: int = Field(default=4096, ge=256, le=32768)
-    model_timeout_seconds: float = Field(default=45, gt=0, le=300)
+    model_max_tokens: int = Field(default=16384, ge=256, le=32768)
+    model_timeout_seconds: float = Field(default=120, gt=0, le=300)
     search_timeout_seconds: float | None = Field(default=None, gt=0, le=120)
     answer_review_enabled: bool = True
     search_provider: Literal["mock", "tavily"] = "mock"
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     http_timeout_seconds: float = Field(default=15, gt=0, le=120)
     max_tool_calls: int = Field(default=12, ge=1, le=30)
     max_campus_pages: int = Field(default=8, ge=1, le=20)
-    request_budget_seconds: float = Field(default=150, gt=0, le=600)
+    request_budget_seconds: float = Field(default=300, gt=0, le=600)
     backend_port: int = Field(default=8000, ge=1024, le=65535)
     frontend_port: int = Field(default=5173, ge=1024, le=65535)
 

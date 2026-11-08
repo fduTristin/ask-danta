@@ -11,8 +11,8 @@
 | `model_api_key` | 空 | DeepSeek API Key |
 | `model_thinking` | `disabled` | `enabled` / `disabled`，不向前端展示思考内容 |
 | `model_reasoning_effort` | `low` | 开启思考时使用：`low` / `high` / `max` |
-| `model_max_tokens` | `4096` | 模型输出上限，256–32768 |
-| `model_timeout_seconds` | `45` | 单次模型请求的 HTTP 超时及整体截止时间 |
+| `model_max_tokens` | `16384` | 模型输出上限，256–32768 |
+| `model_timeout_seconds` | `120` | 单次模型请求的 HTTP 超时及整体截止时间 |
 | `answer_review_enabled` | `true` | 使用独立证据核对断言，再按具体问题修订；每轮最多 4 次核对/改写，共享原总时长。关闭只跳过常规语义核对，引用和显式字数校验仍保留 |
 | `search_provider` | `mock` | `mock` 为离线样例；`tavily` 为真实搜索 |
 | `search_api_key` | 空 | Tavily API Key |
@@ -24,7 +24,7 @@
 | `http_timeout_seconds` | `15` | 树洞 HTTP 超时及搜索/网页读取的默认超时；模型使用独立配置 |
 | `max_tool_calls` | `12` | 每轮用户请求最多尝试的工具调用数；无效参数和未知工具也计数，已耗尽树洞额度的本地拦截另计 |
 | `max_campus_pages` | `8` | 同一树洞工作流共享的分页尝试预算；独立 HTTP 入口一次读取一页 |
-| `request_budget_seconds` | `150` | 单轮 Agent 总时长，包含检索与最终回答 |
+| `request_budget_seconds` | `300` | 单轮 Agent 总时长，包含检索与最终回答 |
 
 ## 部署环境变量
 

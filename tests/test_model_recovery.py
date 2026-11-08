@@ -35,7 +35,7 @@ def test_review_truncation_retries_once_without_publishing_unchecked_content(rec
             return truncated()
         return completion('{"corrections": []}')
 
-    with TestClient(create_app(config(model_thinking='enabled', model_reasoning_effort='high'), httpx.MockTransport(handler))) as client:
+    with TestClient(create_app(config(model_thinking='enabled', model_reasoning_effort='high', model_max_tokens=4096), httpx.MockTransport(handler))) as client:
         sid = client.post('/api/sessions').json()['session_id']
         result = events(client, sid)
         final = result[-1]
