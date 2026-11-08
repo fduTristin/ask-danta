@@ -87,6 +87,7 @@ export function App() {
           const value = await api<Session>(`/api/sessions/${id}`);
           const previous = sessionRef.current;
           if (previous?.session_id === id && value.messages.length > previous.messages.length) {
+            setFailedQuestion('');
             const question = value.messages.at(-2);
             if (question?.role === 'user' && question.content === inputRef.current.trim()) drafts.current.delete(id);
             setInfo('已恢复最新回答，请查看后再继续提问。');
@@ -94,7 +95,7 @@ export function App() {
           install(value, true);
         }
         catch (cause) {
-          if (cause instanceof ApiError && cause.status === 404) { install(null, true); sessionStorage.removeItem('campus-session'); }
+          if (cause instanceof ApiError && cause.status === 404) { install(null, true); setFailedQuestion(''); sessionStorage.removeItem('campus-session'); }
           else throw cause;
         }
       }
@@ -118,6 +119,7 @@ export function App() {
         if (alive && sessionRef.current?.session_id === id) {
           const previous = sessionRef.current;
           const question = value.messages.at(-2);
+          if (value.messages.length > previous.messages.length) setFailedQuestion('');
           if (value.messages.length > previous.messages.length && question?.role === 'user' && question.content === inputRef.current.trim()) {
             editInput(''); drafts.current.delete(id); setInfo('已恢复最新回答，请查看后再继续提问。');
           }

@@ -364,6 +364,19 @@ test('failed send preserves the draft through recheck and can retry', async ({ p
   await expect(page.locator('.user')).toHaveCount(1);
 });
 
+test('rechecking a committed answer removes the stale failed message', async ({ page }) => {
+  await page.route(/\/api\/sessions\/[^/]+$/, route => route.request().method() === 'GET'
+    ? route.fulfill({ status: 503, json: { error: { message: '合成会话读取故障' } } }) : route.continue(), { times: 1 });
+  await page.getByRole('textbox', { name: '你的问题或追问' }).fill('已保存但尚未同步的问题');
+  await page.getByRole('button', { name: '发送', exact: true }).click();
+  await expect(page.locator('.user.failed')).toHaveCount(1);
+  await page.getByRole('button', { name: '重新检查', exact: true }).click();
+  await expect(page.locator('.assistant')).toHaveCount(1);
+  await expect(page.locator('.user')).toHaveCount(1);
+  await expect(page.locator('.user.failed')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEmpty();
+});
+
 test('copy and edit a user message into a new conversation', async ({ page, context, request }) => {
   await ask(page, '原始问题');
   const original = (await (await request.get('/api/sessions')).json()).sessions[0].session_id;
