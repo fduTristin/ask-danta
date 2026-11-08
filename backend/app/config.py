@@ -1,11 +1,12 @@
 from pathlib import Path
 from typing import Literal
 import os
+import sys
 
 from pydantic import Field, HttpUrl, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
 DEPLOYMENT_FIELDS = ("backend_port", "frontend_port", "campus_auth_file", "session_db_file")
 
 

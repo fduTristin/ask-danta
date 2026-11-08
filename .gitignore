@@ -13,6 +13,7 @@ __pycache__/
 *.py[cod]
 dist/
 build/
+release/
 target/
 .pytest_cache/
 

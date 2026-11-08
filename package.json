@@ -1,0 +1,31 @@
+{
+  "name": "ask-danta",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ask Danta campus research assistant",
+  "author": "fduTristin",
+  "engines": { "node": ">=22.12.0" },
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "dev": "python scripts/dev.py",
+    "desktop:dev": "npm --prefix frontend run build && electron .",
+    "desktop:smoke": "electron . --smoke",
+    "build:backend": "uv run --frozen --group desktop python -m PyInstaller --noconfirm --clean desktop/backend.spec",
+    "build": "npm --prefix frontend run build && npm run build:backend",
+    "desktop:pack": "npm run build && electron-builder --dir --publish never",
+    "desktop:dist": "npm run build && electron-builder --publish never"
+  },
+  "devDependencies": { "electron": "45.2.3", "electron-builder": "26.18.0" },
+  "build": {
+    "appId": "io.github.fdutristin.askdanta",
+    "productName": "Ask Danta",
+    "directories": { "output": "release" },
+    "files": ["desktop/main.cjs", "package.json"],
+    "extraResources": [{ "from": "dist/ask-danta-backend", "to": "backend" }],
+    "artifactName": "Ask-Danta-${version}-${os}-${arch}.${ext}",
+    "win": { "target": ["nsis"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
+    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.education", "identity": "-" },
+    "linux": { "target": ["AppImage", "deb"], "category": "Education", "maintainer": "fduTristin" }
+  }
+}

@@ -52,6 +52,21 @@ Agent 在单轮时间、工具调用次数和树洞分页预算内执行检索�
 
 ## 部署与配置
 
+### 桌面应用
+
+项目支持 Electron 桌面打包，安装包包含前端与独立 Python 后端，使用者无需安装 Python、Node.js 或 uv。源码开发仍可运行 `python scripts/dev.py`，或在根目录运行 `npm run dev`，保留 Vite 热更新。
+
+首次构建在项目根目录执行：
+
+```sh
+python scripts/setup.py
+npm ci
+uv sync --frozen --group desktop
+npm run desktop:dist
+```
+
+安装包输出到 `release/`。`npm run desktop:pack` 只生成解包应用；`npm run desktop:dev` 构建前端后启动桌面窗口（修改前端后需重新运行，不提供桌面热更新）。详细构建、数据位置和 GitHub Release 操作见[桌面构建与发布](docs/desktop.md)。
+
 ### 环境要求
 
 - Python 3.11 或更高版本。
