@@ -65,7 +65,7 @@ export function App() {
     else localStorage.removeItem('danta-current-session');
     if (restoreDraft) {
       setMode(value?.source_preference || 'auto');
-      editInput(drafts.current.get(value?.session_id || 'new') ?? value?.pending_question ?? '');
+      editInput(value?.busy ? '' : drafts.current.get(value?.session_id || 'new') ?? value?.pending_question ?? '');
       nearBottom.current = true; setShowLatest(false);
       requestAnimationFrame(() => bottom.current?.scrollIntoView({ block: 'end' }));
     }
@@ -124,6 +124,7 @@ export function App() {
             editInput(''); drafts.current.delete(id); setInfo('已恢复最新回答，请查看后再继续提问。');
           }
           install(value);
+          if (!value.busy && value.pending_question) editInput(value.pending_question);
           if (!value.busy) void refreshList().catch(() => {});
         }
       }).catch(cause => { if (alive) setError(errorText(cause)); });
@@ -284,6 +285,7 @@ export function App() {
         });
         install(target); editInput(question);
       }
+      editInput(''); drafts.current.delete(sessionRef.current?.session_id || 'new');
       setFailedQuestion(''); setProgress(null); setBusy(true); setPendingQuestion(question); nearBottom.current = true;
       const currentRun: Run = { controller: new AbortController(), id: sessionRef.current?.session_id, done: Promise.resolve() };
       run.current = currentRun;

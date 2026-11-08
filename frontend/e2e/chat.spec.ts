@@ -263,6 +263,8 @@ test('switching cancels a running answer and preserves its question', async ({ p
   await page.getByRole('textbox', { name: '你的问题或追问' }).fill('等待合成回答');
   await page.getByRole('button', { name: '发送', exact: true }).click();
   await expect(page.getByRole('button', { name: '停止回答' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEmpty();
+  await expect(page.locator('.user.pending')).toHaveText('等待合成回答');
   await expect(page.getByRole('button', { name: /^搜索范围：/ })).toBeDisabled();
   await page.getByRole('button', { name: '新对话', exact: true }).click();
   await page.getByRole('button', { name: '停止并切换', exact: true }).click();
@@ -337,13 +339,14 @@ test('lost final response restores the committed answer without duplicate retry'
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEmpty();
 });
 
-test('restoring a busy conversation clears the submitted question when it completes', async ({ page, request }) => {
+test('restoring a busy conversation keeps the submitted question out of the composer', async ({ page, request }) => {
   const session = await (await request.post('/api/sessions')).json();
   const completion = request.post(`/api/sessions/${session.session_id}/chat`, { data: { message: '等待恢复中的回答', source_mode: 'web' } });
   await expect.poll(async () => (await (await request.get(`/api/sessions/${session.session_id}`)).json()).busy).toBe(true);
   await page.evaluate(id => localStorage.setItem('danta-current-session', id), session.session_id);
   await page.reload();
-  await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toHaveValue('等待恢复中的回答');
+  await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEmpty();
+  await expect(page.locator('.user.pending')).toHaveText('等待恢复中的回答');
   await expect(page.getByRole('region', { name: '回答执行记录' }).getByRole('status')).toHaveText('理解问题与已有资料');
   await expect(page.getByRole('button', { name: '停止回答' })).toBeVisible();
   await completion;
@@ -410,6 +413,8 @@ test('copy and edit an earlier user message in the same conversation', async ({ 
     await page.setViewportSize({ width, height: 900 });
     await page.locator('.user').hover();
     await page.getByRole('button', { name: '编辑并重新发送' }).click();
+    await expect(page.getByRole('textbox', { name: '编辑消息', exact: true })).toBeFocused();
+    await expect(page.getByRole('textbox', { name: '编辑消息', exact: true })).toHaveCSS('outline-style', 'none');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `../.private/verification/stage6/message-edit-${width}.png` });
     await page.getByRole('button', { name: '取消', exact: true }).click();

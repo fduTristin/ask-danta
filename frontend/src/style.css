@@ -59,7 +59,7 @@ label { display: block; }
 .message-actions { display: flex; align-items: center; gap: 2px; margin-top: 5px; color: var(--muted); }
 .message-actions button { min-height: 32px; font-size: 12px; padding: 6px 8px; }
 .message-editor { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--soft); }
-.message-editor textarea { width: 100%; min-height: 110px; max-height: 300px; resize: vertical; color: inherit; background: transparent; border: 0; padding: 4px; }
+.message-editor textarea { width: 100%; min-height: 110px; max-height: 300px; resize: vertical; color: inherit; background: transparent; border: 0; outline: none; box-shadow: none; padding: 4px; }
 .message-editor small { font-size: 12px; }
 .message-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 @media (hover: hover) {
