@@ -18,7 +18,7 @@ from .model import ModelError, ModelService
 from .agent import Agent, ChatRequest, Session
 from .campus import CampusService, CampusPage, CampusSearchRequest, CampusThreadRequest
 from .campus_auth import CampusError, CampusLoginRequest
-from .sessions import SessionStore, SessionStorageError, SessionUpdate
+from .sessions import SessionStore, SessionStorageError, SessionUpdate, SessionFork, fork_session
 from .progress import Progress
 
 
@@ -166,6 +166,19 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
     @app.get("/api/sessions/{session_id}")
     async def read_session(session_id: UUID):
         return get_session(session_id).public()
+
+    @app.post("/api/sessions/{session_id}/fork", status_code=201)
+    async def fork_conversation(session_id: UUID, body: SessionFork):
+        session = get_session(session_id)
+        ensure_idle(session)
+        if len(session.messages) != body.expected_message_count:
+            raise HTTPException(409, "对话已更新，请刷新后重新编辑。")
+        if body.message_index >= len(session.messages) or session.messages[body.message_index]["role"] != "user":
+            raise HTTPException(422, "请选择需要编辑的用户消息。")
+        branch = fork_session(session, body.message_index)
+        app.state.store.save(branch)
+        app.state.sessions[branch.id] = branch
+        return branch.public()
 
     @app.post("/api/sessions/{session_id}/clear")
     async def clear_session(session_id: UUID):

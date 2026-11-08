@@ -22,6 +22,37 @@ class SessionUpdate(BaseModel):
     source_preference: Literal["auto", "web", "all"] | None = None
 
 
+class SessionFork(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    message_index: int = Field(ge=0)
+    expected_message_count: int = Field(ge=0)
+
+
+def fork_session(session: Session, index: int) -> Session:
+    """Keep only the context preceding the edited user message."""
+    branch = Session(title=session.title + "（编辑）", source_preference=session.source_preference)
+    branch.messages = deepcopy(session.messages[:index])
+    turns = sum(message["role"] == "user" for message in branch.messages)
+
+    def prefix(history):
+        seen = 0
+        for position, message in enumerate(history):
+            if message["role"] == "user":
+                if seen == turns:
+                    return deepcopy(history[:position])
+                seen += 1
+        return deepcopy(history)
+
+    branch.history = prefix(session.history)
+    branch.web_history = prefix(session.web_history)
+    # Source IDs are stable within a conversation. Retain evidence present in
+    # the retained tool history or visible citations, never later-turn evidence.
+    context = json.dumps([branch.history, branch.messages], ensure_ascii=False)
+    ids = set(re.findall(r"\b[WC][1-9][0-9]*\b", context))
+    branch.sources = deepcopy([source for source in session.sources if source["id"] in ids])
+    return branch
+
+
 class SessionStorageError(Exception):
     pass
 

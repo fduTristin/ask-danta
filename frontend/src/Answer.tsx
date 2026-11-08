@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Check, Copy, Link, X } from 'lucide-react';
+import { Check, Copy, Link, RotateCcw, X } from 'lucide-react';
 import type { Message, Source } from './api';
 import { RunProgress } from './RunProgress';
 import { CampusImage } from './CampusImage';
@@ -46,7 +46,7 @@ const sourceComponents: Components = {
   table: ({ children }) => <div className="table-scroll"><table>{children}</table></div>,
 };
 
-export function Answer({ message, index }: { message: Message; index: number }) {
+export function Answer({ message, index, onRetry, disabled }: { message: Message; index: number; onRetry?: () => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string>();
   const [copied, setCopied] = useState(false);
@@ -94,6 +94,7 @@ export function Answer({ message, index }: { message: Message; index: number }) 
     {message.end_reason === 'error' && <p className="notice">本轮资料未完成核对，请结合下方提示继续确认。</p>}
     {!!message.warnings?.length && <p className="notice">{[...new Set(message.warnings)].join(' ')}</p>}
     <div className="answer-actions"><button type="button" onClick={() => void copy()} aria-label={copied ? '已复制回答' : '复制回答'} title="复制回答">{copied ? <Check /> : <Copy />}<span>{copied ? '已复制' : '复制'}</span></button>
+      {message.status === 'incomplete' && onRetry && <button type="button" disabled={disabled} onClick={onRetry}><RotateCcw />重新发送</button>}
       {!!sources.length && <button type="button" aria-expanded={open} aria-controls={`sources-${index}`} onClick={event => open ? closeSources() : showSources(undefined, event.currentTarget)}><Link />来源 {sources.length}</button>}</div>
     {copyError && <p role="status" className="notice">{copyError}</p>}
     {open && <div className="answer-sources" id={`sources-${index}`} ref={panel} tabIndex={-1} aria-label="本回答引用来源"><div className="source-heading"><strong>本回答的依据</strong><button type="button" aria-label="收起来源并返回回答" onClick={closeSources}><X /></button></div>{sources.map(source => <SourceCard key={source.id} source={source} selected={selected === source.id} />)}</div>}

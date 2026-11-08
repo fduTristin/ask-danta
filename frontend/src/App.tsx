@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, PanelLeft, Settings2, Square, SquarePen } from 'lucide-react';
 import { Answer } from './Answer';
+import { UserMessage } from './UserMessage';
 import { RunProgress } from './RunProgress';
 import { CampusLogin } from './CampusLogin';
 import { Modal } from './Modal';
@@ -26,6 +27,7 @@ export function App() {
   const [mode, setMode] = useState<SourceMode>('auto');
   const [busy, setBusy] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState('');
+  const [failedQuestion, setFailedQuestion] = useState('');
   const [progress, setProgress] = useState<Progress | null>(null);
   const run = useRef<Run | null>(null);
   const [ready, setReady] = useState(false);
@@ -52,7 +54,8 @@ export function App() {
   const campusReady = !!health?.campus.tools_enabled;
   const effectiveMode = mode === 'auto' ? campusReady ? 'all' : 'web' : mode;
   const messages = session?.messages || [];
-  const hasConversation = messages.length > 0 || !!pendingQuestion || !!session?.pending_question;
+  const retryQuestion = failedQuestion || session?.pending_question || '';
+  const hasConversation = messages.length > 0 || !!pendingQuestion || !!retryQuestion;
 
   function editInput(value: string) { inputRef.current = value; setInput(value); }
   function install(value: Session | null, restoreDraft = false) {
@@ -187,7 +190,7 @@ export function App() {
     try {
       if (run.current || sessionRef.current?.busy) await stop();
       install(id ? await api<Session>(`/api/sessions/${id}`) : null, true);
-      setPendingQuestion(''); setInfo(''); setMenu(undefined);
+      setPendingQuestion(''); setFailedQuestion(''); setInfo(''); setMenu(undefined);
       if (mobile) setSidebar(false);
       setAction(null);
     } catch (cause) { setError(errorText(cause)); }
@@ -244,16 +247,17 @@ export function App() {
           const value = await synchronize(id);
           const committed = value.messages.length > beforeCount;
           install(value);
-          if (committed) { editInput(''); drafts.current.delete(id); setError(''); setInfo(''); }
-          else { editInput(question); drafts.current.set(id, question); setError(currentRun.controller.signal.aborted ? '' : failure); setInfo(currentRun.controller.signal.aborted ? '已停止，问题已保留，可修改后重新发送。' : ''); }
-        } catch (cause) { setError(`${errorText(cause)} 请先重新检查会话，再发送问题。`); editInput(question); }
-      } else { setError(failure); editInput(question); }
+          if (committed) { editInput(''); setFailedQuestion(''); drafts.current.delete(id); setError(''); setInfo(''); }
+          else { editInput(question); setFailedQuestion(question); drafts.current.set(id, question); setError(currentRun.controller.signal.aborted ? '' : failure); setInfo(currentRun.controller.signal.aborted ? '已停止，问题已保留，可修改后重新发送。' : ''); }
+        } catch (cause) { setError(`${errorText(cause)} 请先重新检查会话，再发送问题。`); editInput(question); setFailedQuestion(question); }
+      } else { setError(failure); editInput(question); setFailedQuestion(question); }
       setPendingQuestion(''); setBusy(false); setProgress(null); run.current = null;
       await refreshList().catch(() => {}); void refreshHealth();
     }
   }
-  async function send() {
-    if (run.current || actionLock.current || activeBusy || !ready || !enabled || !input.trim()) return;
+  async function send(text = inputRef.current, editIndex?: number) {
+    const question = text.trim();
+    if (run.current || actionLock.current || activeBusy || !ready || !enabled || !question) return;
     // Reconcile with the server before sending, especially after a lost final event.
     actionLock.current = true; setWorking(true); setError(''); setInfo('');
     try {
@@ -264,15 +268,21 @@ export function App() {
           if (latest.messages.length > sessionRef.current.messages.length && question?.role === 'user' && question.content === inputRef.current.trim()) {
             editInput(''); drafts.current.delete(latest.session_id);
           }
-          install(latest); setInfo('已恢复最新回答，请查看后再继续提问。'); return;
+          install(latest); setFailedQuestion(''); setInfo('已恢复最新回答，请查看后再继续提问。'); return;
         }
         if (latest.busy) { install(latest); setInfo('这段对话仍在回答，可以等待或停止。'); return; }
       }
       if (effectiveMode === 'all' && !localStorage.getItem('danta-campus-consent')) { setConsentMode(mode); setConsent(true); return; }
-      setProgress(null); setBusy(true); setPendingQuestion(input.trim()); nearBottom.current = true;
+      if (editIndex !== undefined && sessionRef.current) {
+        const original = sessionRef.current;
+        const branch = await api<Session>(`/api/sessions/${original.session_id}/fork`, 'POST', { message_index: editIndex, expected_message_count: original.messages.length });
+        drafts.current.set(original.session_id, inputRef.current);
+        install(branch); editInput(question);
+      }
+      setFailedQuestion(''); setProgress(null); setBusy(true); setPendingQuestion(question); nearBottom.current = true;
       const currentRun: Run = { controller: new AbortController(), id: sessionRef.current?.session_id, done: Promise.resolve() };
       run.current = currentRun;
-      currentRun.done = executeTurn(currentRun, input.trim());
+      currentRun.done = executeTurn(currentRun, question);
     } catch (cause) { setError(errorText(cause)); }
     finally { actionLock.current = false; setWorking(false); }
   }
@@ -326,8 +336,9 @@ export function App() {
         <div className="messages-scroll" ref={scroll} onScroll={() => { const node = scroll.current!; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; setShowLatest(!nearBottom.current); }}>
           <div className="messages" aria-label="对话内容">
             {!hasConversation && <div className="welcome"><img src="/danta-logo.webp" alt="" /><h1>今天，有什么校园问题？</h1></div>}
-            {messages.map((message, index) => message.role === 'user' ? <article className="message user" key={`${session?.session_id}-${index}`}><p>{message.content}</p></article> : <Answer key={`${session?.session_id}-${index}`} message={message} index={index} />)}
+            {messages.map((message, index) => message.role === 'user' ? <UserMessage key={`${session?.session_id}-${index}`} content={message.content} disabled={activeBusy || working || !enabled || !ready} onSend={text => void send(text, index)} /> : <Answer key={`${session?.session_id}-${index}`} message={message} index={index} disabled={activeBusy || working || !enabled || !ready} onRetry={index > 0 && messages[index - 1].role === 'user' ? () => void send(messages[index - 1].content, index - 1) : undefined} />)}
             {(pendingQuestion || activeBusy && session?.pending_question) && <article className="message user pending"><p>{pendingQuestion || session?.pending_question}</p></article>}
+            {!activeBusy && retryQuestion && <UserMessage key={`${session?.session_id}-retry-${retryQuestion}`} content={retryQuestion} failed disabled={working || !enabled || !ready} onSend={text => void send(text)} />}
             {activeBusy && <RunProgress key={session?.session_id || 'new'} progress={busy ? progress : session?.progress} active />}
             {session?.interrupted && !activeBusy && session.progress && <RunProgress progress={session.progress} />}
             {session?.interrupted && !activeBusy && <p className="notice interrupted">上次回答未完成，问题已恢复到输入框，可修改后重新发送。</p>}

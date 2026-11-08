@@ -358,8 +358,47 @@ test('failed send preserves the draft through recheck and can retry', async ({ p
   await expect(page.getByRole('button', { name: '重试', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '重新检查', exact: true }).click();
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toHaveValue('需要保留的问题');
-  await page.getByRole('button', { name: '发送', exact: true }).click();
+  await page.getByRole('button', { name: '重新发送', exact: true }).click();
   await expect(page.locator('.assistant')).toHaveCount(1);
+  await expect(page.locator('.user')).toHaveCount(1);
+});
+
+test('copy and edit a user message into a new conversation', async ({ page, context, request }) => {
+  await ask(page, '原始问题');
+  const original = (await (await request.get('/api/sessions')).json()).sessions[0].session_id;
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.locator('.user').hover();
+  await page.getByRole('button', { name: '复制消息', exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('原始问题');
+  await page.getByRole('button', { name: '编辑并重新发送' }).click();
+  await page.getByRole('textbox', { name: '编辑消息', exact: true }).fill('修改后的问题');
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.locator('.user p')).toHaveText('原始问题');
+  await page.locator('.user').hover();
+  await page.getByRole('button', { name: '编辑并重新发送' }).click();
+  await page.getByRole('textbox', { name: '编辑消息', exact: true }).fill('修改后的问题');
+  await page.getByRole('button', { name: '发送修改', exact: true }).click();
+  await expect(page.locator('.user p')).toHaveText('修改后的问题');
+  await expect(page.locator('.assistant')).toHaveCount(1);
+  expect((await (await request.get(`/api/sessions/${original}`)).json()).messages[0].content).toBe('原始问题');
+  await page.reload();
+  await expect(page.locator('.user p')).toHaveText('修改后的问题');
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.locator('.user').hover();
+    await page.getByRole('button', { name: '编辑并重新发送' }).click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `../.private/verification/stage6/message-edit-${width}.png` });
+    await page.getByRole('button', { name: '取消', exact: true }).click();
+  }
+});
+
+test('an incomplete model answer can be resent', async ({ page }) => {
+  await ask(page, '失败一次');
+  await page.getByRole('button', { name: '重新发送', exact: true }).click();
+  await expect(page.locator('.assistant')).toHaveCount(1);
+  await expect(page.locator('.assistant')).toContainText('合成验收回答');
+  await expect(page.getByRole('button', { name: '重新发送', exact: true })).toHaveCount(0);
 });
 
 test('clear persists and login success enables a consented data-source choice', async ({ page }) => {

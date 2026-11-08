@@ -55,7 +55,17 @@ label { display: block; }
 .messages-scroll { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; scrollbar-width: thin; overscroll-behavior: contain; }
 .messages { width: min(640px, calc(100% - 48px)); margin: 0 auto; padding: 22px 0 36px; }
 .message { margin-bottom: 32px; min-width: 0; }
-.user { display: flex; justify-content: flex-end; }
+.user { display: flex; flex-direction: column; align-items: flex-end; }
+.message-actions { display: flex; align-items: center; gap: 2px; margin-top: 5px; color: var(--muted); }
+.message-actions button { min-height: 32px; font-size: 12px; padding: 6px 8px; }
+.message-editor { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--soft); }
+.message-editor textarea { width: 100%; min-height: 110px; max-height: 300px; resize: vertical; color: inherit; background: transparent; border: 0; padding: 4px; }
+.message-editor small { font-size: 12px; }
+.message-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+@media (hover: hover) {
+  .user:not(.failed) .message-actions { opacity: 0; }
+  .user:hover .message-actions, .user:focus-within .message-actions { opacity: 1; }
+}
 .user p { margin: 0; max-width: 90%; padding: 12px 17px; background: #eaf2fc; border-radius: 18px 18px 5px 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .assistant-label { display: flex; align-items: center; gap: 8px; color: var(--blue); font-size: 12px; margin-bottom: 14px; }
 .assistant-label img { width: 26px; height: 26px; object-fit: contain; }
