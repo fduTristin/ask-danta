@@ -75,8 +75,19 @@ class ModelService:
         if not self.settings.model_api_key.get_secret_value():
             raise ModelError("model_not_configured", "请在设置中填写模型 API Key。", 503)
         thinking = thinking or self.settings.model_thinking
+        # Fast review can request tools without producing reasoning. When its
+        # result rejoins the thinking loop, DeepSeek still requires this field
+        # on assistant tool calls. Restored history also intentionally omits
+        # private reasoning. Normalize only the wire copy, preserving any real
+        # reasoning from the current turn and never persisting a fabricated trace.
+        wire_messages = [
+            {**message, "reasoning_content": message.get("reasoning_content") or ""}
+            if thinking == "enabled" and message.get("role") == "assistant" and message.get("tool_calls")
+            else message
+            for message in messages
+        ]
         body = {
-            "model": self.settings.model_name, "messages": messages,
+            "model": self.settings.model_name, "messages": wire_messages,
             "stream": False, "thinking": {"type": thinking},
             "max_tokens": self.settings.model_max_tokens,
         }
@@ -127,7 +138,7 @@ class ModelService:
                 raise ModelError("model_auth_failed", "模型认证失败，请检查 DeepSeek 密钥和权限。") from exc
             if status == 429:
                 raise ModelError("model_rate_limited", "模型服务限流或额度不足，请稍后重试。", 429) from exc
-            raise ModelError("model_upstream_error", "模型服务请求失败，请检查模型配置或稍后重试。") from exc
+            raise ModelError("model_upstream_error", f"模型服务请求失败（HTTP {status}），请检查模型配置或稍后重试。") from exc
         except httpx.RequestError as exc:
             raise ModelError("model_unreachable", "无法连接模型服务，请检查网络。") from exc
         except (ValueError, ValidationError) as exc:
