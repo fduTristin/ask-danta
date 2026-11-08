@@ -149,13 +149,41 @@ def test_model_errors_are_sanitized_and_session_reusable(status, code):
         assert client.post(f"/api/sessions/{id}/clear").status_code == 200
 
 
-@pytest.mark.parametrize("payload", [{}, {"choices": []}, {"choices": [{"finish_reason": "length", "message": {"role": "assistant", "content": "截断"}}]}, {"choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": ""}}]}])
+@pytest.mark.parametrize("payload", [{}, {"choices": []}])
 def test_invalid_model_response(payload):
     with TestClient(create_app(settings(), httpx.MockTransport(lambda request: httpx.Response(200, json=payload)))) as client:
         id = client.post("/api/sessions").json()["session_id"]
         result = events(client, id)
         assert result[-2]["error"]["code"] == "model_invalid_response"
         assert result[-1]["type"] == "final"
+
+
+@pytest.mark.parametrize('reason,content,code', [
+    ('length', None, 'model_output_truncated'),
+    ('length', 'partial-private-output', 'model_output_truncated'),
+    ('stop', '', 'model_empty_response'),
+    ('content_filter', None, 'model_content_filtered'),
+    ('insufficient_system_resource', None, 'model_interrupted'),
+    ('aborted', None, 'model_interrupted'),
+])
+def test_model_termination_reasons_are_distinct_and_redacted(reason, content, code):
+    payload = {'choices': [{'finish_reason': reason, 'message': {
+        'role': 'assistant', 'content': content, 'reasoning_content': 'private-reasoning'}}]}
+    with TestClient(create_app(settings(), httpx.MockTransport(lambda request: httpx.Response(200, json=payload)))) as client:
+        sid = client.post('/api/sessions').json()['session_id']
+        result = events(client, sid)
+        assert result[-2]['error']['code'] == code
+        assert result[-1]['message']['status'] == 'incomplete'
+        assert 'private-reasoning' not in json.dumps(result)
+        assert 'partial-private-output' not in json.dumps(result)
+
+
+def test_null_tool_calls_are_accepted_for_a_complete_answer():
+    payload = {'choices': [{'finish_reason': 'stop', 'message': {
+        'role': 'assistant', 'content': '完整回答', 'tool_calls': None}}]}
+    with TestClient(create_app(settings(), httpx.MockTransport(lambda request: httpx.Response(200, json=payload)))) as client:
+        sid = client.post('/api/sessions').json()['session_id']
+        assert events(client, sid, '你好')[-1]['message']['content'] == '完整回答'
 
 
 def test_timeout_preserves_acquired_sources():
@@ -174,8 +202,9 @@ def test_timeout_preserves_acquired_sources():
         id = client.post("/api/sessions").json()["session_id"]
         result = events(client, id)
         assert result[-2]["error"]["code"] == "model_timeout"
-        assert "江湾窗口" in result[-1]["message"]["content"]
+        assert "江湾窗口" not in result[-1]["message"]["content"]
         assert "尚未完成综合核对" in result[-1]["message"]["content"]
+        assert client.get(f'/api/sessions/{id}').json()['sources'][0]['snippet'] == '请到江湾窗口办理。'
 
 
 def test_search_failure_is_returned_to_model_not_hidden():

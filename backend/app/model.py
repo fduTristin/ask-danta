@@ -4,15 +4,16 @@ import asyncio
 from typing import Literal
 
 import httpx
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from .config import Settings
 
 
 class ModelError(Exception):
-    def __init__(self, code: str, message: str, status: int = 502):
+    def __init__(self, code: str, message: str, status: int = 502, *, finish_reason: str | None = None, usage: dict | None = None):
         super().__init__(message)
         self.code, self.message, self.status = code, message, status
+        self.finish_reason, self.usage = finish_reason, usage or {}
 
 
 class FunctionCall(BaseModel):
@@ -33,6 +34,11 @@ class AssistantMessage(BaseModel):
     reasoning_content: str | None = None
     usage: dict[str, int] = Field(default_factory=dict, exclude=True)
 
+    @field_validator("tool_calls", mode="before")
+    @classmethod
+    def nullable_tools(cls, value):
+        return [] if value is None else value
+
     @model_validator(mode="after")
     def valid_message(self):
         if not self.tool_calls and not (self.content and self.content.strip()):
@@ -50,8 +56,10 @@ class AssistantMessage(BaseModel):
 
 
 class Choice(BaseModel):
-    message: AssistantMessage
-    finish_reason: Literal["stop", "tool_calls"]
+    # Inspect the termination reason before validating the message. Truncated
+    # thinking responses can legitimately contain no final answer at all.
+    message: dict
+    finish_reason: Literal["stop", "tool_calls", "length", "content_filter", "insufficient_system_resource", "aborted"]
 
 
 class Completion(BaseModel):
@@ -63,15 +71,16 @@ class ModelService:
     def __init__(self, settings: Settings, client: httpx.AsyncClient):
         self.settings, self.client = settings, client
 
-    async def complete(self, messages: list[dict], tools: list[dict]) -> AssistantMessage:
+    async def complete(self, messages: list[dict], tools: list[dict], *, thinking: Literal["enabled", "disabled"] | None = None) -> AssistantMessage:
         if not self.settings.model_api_key.get_secret_value():
             raise ModelError("model_not_configured", "请在设置中填写模型 API Key。", 503)
+        thinking = thinking or self.settings.model_thinking
         body = {
             "model": self.settings.model_name, "messages": messages,
-            "stream": False, "thinking": {"type": self.settings.model_thinking},
+            "stream": False, "thinking": {"type": thinking},
             "max_tokens": self.settings.model_max_tokens,
         }
-        if self.settings.model_thinking == "enabled":
+        if thinking == "enabled":
             body["reasoning_effort"] = self.settings.model_reasoning_effort
         if tools:
             body["tools"] = tools
@@ -85,11 +94,30 @@ class ModelService:
                 )
             response.raise_for_status()
             payload = Completion.model_validate(response.json())
-            message = payload.choices[0].message
-            message.usage = {key: value for key, value in payload.usage.items()
+            choice = payload.choices[0]
+            usage = {key: value for key, value in payload.usage.items()
                              if key in ("prompt_tokens", "completion_tokens", "total_tokens",
                                         "prompt_cache_hit_tokens", "prompt_cache_miss_tokens")
                              and type(value) is int and value >= 0}
+            failures = {
+                "length": ("model_output_truncated", "模型输出达到长度限制，未能完整返回。可在设置中增加最大输出 Token 数，或降低思考强度后重试。"),
+                "content_filter": ("model_content_filtered", "模型服务未返回本次内容。请调整问题后重试。"),
+                "insufficient_system_resource": ("model_interrupted", "模型服务资源不足，本次生成中断，请稍后重试。"),
+                "aborted": ("model_interrupted", "模型服务中断了本次生成，请稍后重试。"),
+            }
+            if choice.finish_reason in failures:
+                code, detail = failures[choice.finish_reason]
+                raise ModelError(code, detail, finish_reason=choice.finish_reason, usage=usage)
+            content = choice.message.get("content")
+            if choice.message.get("role") == "assistant" and (content is None or isinstance(content, str) and not content.strip()) and not choice.message.get("tool_calls"):
+                raise ModelError("model_empty_response", "模型没有返回回答内容，请重试。", finish_reason=choice.finish_reason, usage=usage)
+            try:
+                message = AssistantMessage.model_validate(choice.message)
+            except ValidationError:
+                raise ModelError("model_invalid_response", "模型返回的数据格式无效，请重试。", finish_reason=choice.finish_reason, usage=usage) from None
+            if (choice.finish_reason == "tool_calls") != bool(message.tool_calls):
+                raise ModelError("model_invalid_response", "模型返回的工具调用状态不一致，请重试。", finish_reason=choice.finish_reason, usage=usage)
+            message.usage = usage
             return message
         except (httpx.TimeoutException, TimeoutError) as exc:
             raise ModelError("model_timeout", "模型响应超时，本轮未能完成回答。", 504) from exc

@@ -20,7 +20,7 @@ class Progress:
 
     def update(self, event: dict) -> bool:
         kind = event["type"]
-        if kind not in {"model_start", "review_start", "tool_start", "tool_complete",
+        if kind not in {"model_start", "review_start", "review_retry", "tool_start", "tool_complete",
                         "tool_error", "source_notice", "budget", "error", "final", "interrupted"}:
             return False
         elapsed = round((time.monotonic() - self.started) * 1000)
@@ -52,7 +52,12 @@ class Progress:
 
         for step in steps:
             if step["status"] == "running":
-                finish(step, "error" if kind == "error" else "interrupted" if kind == "interrupted" else "complete")
+                finish(step, "error" if kind in {"error", "review_retry"} else "interrupted" if kind == "interrupted" else "complete")
+        if kind == "review_retry":
+            steps.append({"id": str(len(steps)), "label": "重试答案核对",
+                          "detail": "前次模型响应未完成，将在本轮预算内重试一次。",
+                          "status": "notice", "started_ms": elapsed, "duration_ms": 0})
+            return True
         if kind in {"final", "error", "interrupted"}:
             status = "interrupted" if kind == "interrupted" else "error" if kind == "error" else "complete"
             if kind == "final" and event.get("message", {}).get("status") == "incomplete":

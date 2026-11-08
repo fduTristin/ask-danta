@@ -78,6 +78,8 @@
 
 ## 会话与事件流
 
+模型适配器区分 `model_output_truncated`、`model_empty_response`、`model_content_filtered`、`model_interrupted` 与 `model_invalid_response`。失败轮次的 `metrics` 保存 `error_stage` 以及上游提供的合法 `error_finish_reason`；失败响应中可用的 Token 用量也计入统计，不保存原始响应或内部思考。核对阶段允许一次受现有预算约束的响应恢复，发出 `review_retry` 事件；其进度记录将前一次核对标为失败，再显示重试步骤。认证、限流等错误不会自动重试。
+
 | 接口 | 用途 |
 | --- | --- |
 | `POST /api/sessions` | 新建会话，返回 `session_id`、空历史与来源 |

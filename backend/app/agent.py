@@ -81,17 +81,11 @@ class Session:
 
 
 def fallback(reason: str, sources: list[dict]) -> str:
-    text = f"本轮未完成完整回答：{reason}"
+    text = f"本轮未能完成回答：{reason}"
     actual = [source for source in sources if not source["is_mock"]]
     if actual:
-        text += "\n\n已取得以下来源资料，尚未完成综合核对："
-        for source in actual[-5:]:
-            text += f"\n\n[{source['id']}] {source['title']}"
-            if source.get('source') != 'campus':
-                text += '\n' + source['snippet'][:500]
-    else:
-        text += "\n\n尚无可用于核实本轮问题的真实资料。"
-    return text + "\n\n资料可能不完整；可以缩小问题范围后继续追问。"
+        text += "\n\n已取得部分检索资料，但尚未完成综合核对。"
+    return text + "\n\n可以重新发送此问题。"
 
 
 class Agent:
@@ -152,6 +146,8 @@ class Agent:
         answer = ""
         reviewed = False
         review_calls = 0
+        review_response_retries = 0
+        model_phase = "answer"
         failed = False
         retrieval_exhausted = False
         budget_reasons: list[str] = []
@@ -207,25 +203,31 @@ class Agent:
                     "剩余网页工具仅在能回答当前缺口时使用，不为凑来源查询身份背景。"
                     "每次先看结果再决定下一步，别一次提交超过剩余额度的调用；信息足够立即回答。"}
 
-        async def complete(messages, tools):
+        def record_usage(usage):
+            for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+                metrics[key] += usage.get(key, 0)
+            if all(key in usage for key in ("prompt_tokens", "completion_tokens", "total_tokens")):
+                metrics["usage_reported_calls"] += 1
+            cache_keys = ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens")
+            if all(key in usage for key in cache_keys) and sum(usage[key] for key in cache_keys) == usage.get("prompt_tokens"):
+                metrics["cache_usage_reported_calls"] += 1
+                for key in cache_keys:
+                    metrics[key] += usage[key]
+
+        async def complete(messages, tools, *, nonthinking=False):
             if metrics['model_calls'] >= self.settings.max_tool_calls + MAX_REVIEW_CALLS + 1:
                 raise ModelError('model_budget_exhausted', '本轮模型调用预算已用完。')
             metrics["model_calls"] += 1
             call_started = time.monotonic()
             try:
-                message = await within(self.model.complete(messages, tools), deadline)
+                operation = self.model.complete(messages, tools, thinking="disabled") if nonthinking else self.model.complete(messages, tools)
+                message = await within(operation, deadline)
+            except ModelError as exc:
+                record_usage(exc.usage)
+                raise
             finally:
                 metrics["model_seconds"] += time.monotonic() - call_started
-            for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
-                metrics[key] += message.usage.get(key, 0)
-            if all(key in message.usage for key in ("prompt_tokens", "completion_tokens", "total_tokens")):
-                metrics["usage_reported_calls"] += 1
-            cache_keys = ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens")
-            if (all(key in message.usage for key in cache_keys)
-                    and sum(message.usage[key] for key in cache_keys) == message.usage.get("prompt_tokens")):
-                metrics["cache_usage_reported_calls"] += 1
-                for key in cache_keys:
-                    metrics[key] += message.usage[key]
+            record_usage(message.usage)
             return message
 
         try:
@@ -247,6 +249,7 @@ class Agent:
                             "简单事实题仍查不到核心事实时，用两三句话说明缺口和核实方式，不展开无关地址、班次或背景。"})
                     if limited:
                         messages.append({"role": "system", "content": "检索已停止，请基于已有证据立即回答，明确未核实部分，不再调用工具。只给有证据的答案或简短缺口说明，不展开无关背景。运行额度提示由界面单独显示，正文不重复。"})
+                    model_phase = "answer"
                     yield {"type": "model_start", "message": "正在整理回答…" if limited else "正在理解问题和已有资料…"}
                     message = await complete(messages, [] if limited else available_tools())
                     needs_review = self.settings.answer_review_enabled
@@ -254,6 +257,7 @@ class Agent:
                     corrections = []
                     fact_checks = []
                     audit_format_error = None
+                    retry_without_thinking = False
                     while not message.tool_calls and review_calls < MAX_REVIEW_CALLS:
                         issues = publication_issues(message.content or "")
                         if not needs_review and not issues and not corrections:
@@ -264,6 +268,7 @@ class Agent:
                         reviewed = True
                         review_calls += 1
                         metrics["review_calls"] = review_calls
+                        model_phase = "review"
                         yield {"type": "review_start", "message": "正在核对答案是否切题、引用是否支持结论…"}
                         # A separate audit identifies unsupported assertions before
                         # editing. At most four review/edit calls share the original
@@ -287,10 +292,27 @@ class Agent:
                             referenced.update(re.findall(r'(?<![A-Za-z0-9])[WC][1-9][0-9]*(?![A-Za-z0-9])', ' '.join(corrections)))
                             if referenced:
                                 payload['evidence'] = [s for s in payload['evidence'] if s['id'] in referenced]
-                        checked = await complete([
-                            {"role": "system", "content": AUDIT if needs_review else REVIEW},
-                            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-                        ], review_tools)
+                        try:
+                            checked = await complete([
+                                {"role": "system", "content": AUDIT if needs_review else REVIEW},
+                                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                            ], review_tools, nonthinking=retry_without_thinking)
+                        except ModelError as exc:
+                            recoverable = exc.code in {"model_output_truncated", "model_empty_response", "model_invalid_response", "model_interrupted"}
+                            if not recoverable or review_response_retries or review_calls >= MAX_REVIEW_CALLS or time.monotonic() >= deadline - min(5, self.settings.model_timeout_seconds):
+                                raise
+                            review_response_retries += 1
+                            metrics["review_response_retries"] = review_response_retries
+                            metrics["review_response_error"] = exc.code
+                            if exc.finish_reason:
+                                metrics["review_response_finish_reason"] = exc.finish_reason
+                            # Retry the same unpublished draft once. Disable
+                            # thinking only for recovery, without increasing the
+                            # user's token limit or the shared time/call budgets.
+                            retry_without_thinking = True
+                            yield {"type": "review_retry"}
+                            continue
+                        retry_without_thinking = False
                         if not review_tools and checked.tool_calls:
                             raise ModelError("model_ignored_review", "模型未按最终核对要求结束工具调用。")
                         if checked.tool_calls:
@@ -462,6 +484,9 @@ class Agent:
                 reason = exc.message if isinstance(exc, ModelError) else "本轮总时长预算已用完。"
                 limited = limited or isinstance(exc, TimeoutError)
                 metrics["error_code"] = code
+                metrics["error_stage"] = model_phase
+                if isinstance(exc, ModelError) and exc.finish_reason:
+                    metrics["error_finish_reason"] = exc.finish_reason
                 if code in ("request_budget_exhausted", "model_budget_exhausted") and code not in budget_reasons:
                     budget_reasons.append(code)
                 warnings.append(reason)
