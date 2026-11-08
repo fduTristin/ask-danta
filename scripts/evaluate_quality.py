@@ -118,7 +118,8 @@ async def main():
     args = parser.parse_args()
     if not args.label.replace("-", "").replace("_", "").isalnum():
         parser.error("label must contain only letters, digits, hyphens or underscores")
-    config = Settings()
+    from app.runtime_settings import load_settings
+    config = load_settings()
     if args.thinking:
         config = config.model_copy(update={"model_thinking": args.thinking})
     if args.review:

@@ -1,17 +1,26 @@
 from pathlib import Path
 from typing import Literal
+import os
 
 from pydantic import Field, HttpUrl, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[2]
+DEPLOYMENT_FIELDS = ("backend_port", "frontend_port", "campus_auth_file", "session_db_file")
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=ROOT / ".env", env_file_encoding="utf-8-sig", extra="ignore",
-        hide_input_in_errors=True,
+        extra="ignore", hide_input_in_errors=True,
     )
+
+    @classmethod
+    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
+        # User settings come exclusively from RuntimeSettingsStore. Only process
+        # deployment variables are supported; legacy .env files are never read.
+        def deployment_environment():
+            return {name: os.environ[name.upper()] for name in DEPLOYMENT_FIELDS if name.upper() in os.environ}
+        return init_settings, deployment_environment
 
     model_base_url: HttpUrl = "https://api.deepseek.com"
     model_name: str = Field(default="deepseek-flash", min_length=1, max_length=200)

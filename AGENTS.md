@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-- `backend/app/`: FastAPI application factory (`main.py`), environment settings (`config.py`), web adapters, and read-only campus API/authentication (`campus.py`, `campus_auth.py`).
+- `backend/app/`: FastAPI application factory (`main.py`), configuration schema (`config.py`), private persisted settings (`runtime_settings.py`), web adapters, and read-only campus API/authentication (`campus.py`, `campus_auth.py`).
 - `frontend/src/`: React/TypeScript interface and CSS; keep UI assets here. `frontend/vite.config.ts` configures the `/api` development proxy.
 - `tests/`: backend and adapter tests using synthetic responses.
 - `scripts/`: dependency installation, development server supervision, and live-search checks.
@@ -13,7 +13,7 @@
 
 Use Python 3.11+, uv, and Node.js 22.12+ with npm. Run from the repository root:
 
-- `python scripts/setup.py`: install locked dependencies and create `.env` if absent.
+- `python scripts/setup.py`: install locked dependencies; configure services through the Settings UI.
 - `python scripts/dev.py`: start frontend and backend on loopback; Ctrl+C stops both.
 - `uv run --frozen pytest -q`: run isolated backend tests.
 - `npm --prefix frontend run build`: check TypeScript and build frontend assets.
@@ -93,4 +93,4 @@ PRs should explain behavior, scope, validation, and limitations. Link issues or 
 
 ## Security & Configuration
 
-Keep secrets in ignored `.env` or `.private/` files; only commit placeholders in `.env.example`. Never expose credentials in frontend responses, logs, or screenshots. Preserve loopback defaults, explicit mock labeling, and sanitized errors. Live failures must not silently return mock results. Do not introduce Rust or `danta-cli` as runtime dependencies.
+Keep secrets in ignored `.private/` files. User settings are stored in `.private/settings.json`; the application must not read or generate `.env`. Only deployment ports and storage paths use process environment variables. Never expose credentials in frontend responses, logs, or screenshots. Preserve loopback defaults, explicit mock labeling, and sanitized errors. Live failures must not silently return mock results. Do not introduce Rust or `danta-cli` as runtime dependencies.

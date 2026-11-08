@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.config import Settings
+from app.runtime_settings import load_settings
 from app.main import create_app
 
 
@@ -70,7 +71,7 @@ def main():
     if not (ROOT / "frontend/dist/index.html").is_file():
         parser.error("Build frontend first: npm --prefix frontend run build")
     with tempfile.TemporaryDirectory(prefix="campus-failure-demo-") as temp:
-        app = build_demo(Settings(), Path(temp) / "synthetic-tokens.json")
+        app = build_demo(load_settings(), Path(temp) / "synthetic-tokens.json")
         uvicorn.run(app, host="127.0.0.1", port=args.port, access_log=False)
 
 

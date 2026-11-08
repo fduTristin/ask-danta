@@ -129,12 +129,18 @@ def test_network_failures(exception, code):
         assert "test-secret" not in response.text
 
 
-def test_config_paths_env_priority_and_budget_validation(tmp_path, monkeypatch):
+def test_user_settings_ignore_env_and_deployment_variables_remain_supported(tmp_path, monkeypatch):
     dotenv = tmp_path / ".env"
     dotenv.write_text("MODEL_NAME=file-model\nMODEL_API_KEY=file-secret\n", encoding="utf-8")
     monkeypatch.setenv("MODEL_NAME", "environment-model")
+    monkeypatch.setenv("MODEL_API_KEY", "environment-secret")
+    monkeypatch.setenv("MODEL_MAX_TOKENS", "invalid-ignored-value")
+    monkeypatch.setenv("BACKEND_PORT", "8100")
     settings = Settings(_env_file=dotenv)
-    assert settings.model_name == "environment-model"
+    assert settings.model_name == "deepseek-flash"
+    assert not settings.model_api_key.get_secret_value()
+    assert settings.model_max_tokens == 4096
+    assert settings.backend_port == 8100
     assert settings.auth_path == ROOT / ".private/campus-tokens.json"
     assert "file-secret" not in repr(settings)
     with pytest.raises(ValidationError):

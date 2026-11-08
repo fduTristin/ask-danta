@@ -15,15 +15,7 @@ def main() -> int:
         return 1
     subprocess.run([uv, "sync", "--frozen"], cwd=ROOT, check=True)
     subprocess.run([npm, "ci", "--no-audit", "--no-fund"], cwd=ROOT / "frontend", check=True)
-    target = ROOT / ".env"
-    if not target.exists():
-        # Exclusive creation protects an existing file from concurrent setup.
-        try:
-            with target.open("x", encoding="utf-8") as output:
-                output.write((ROOT / ".env.example").read_text(encoding="utf-8"))
-        except FileExistsError:
-            pass
-    print("Ready. Edit .env as needed, then run: python scripts/dev.py")
+    print("Ready. Run: python scripts/dev.py, then configure services in Settings.")
     return 0
 
 

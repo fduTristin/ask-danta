@@ -18,7 +18,7 @@ try:
     with urlopen(request, timeout=130) as response:
         result = json.load(response)
     if result["is_mock"]:
-        sys.exit("NOT VERIFIED: mock results. Set SEARCH_PROVIDER=tavily and SEARCH_API_KEY, then restart.")
+        sys.exit("NOT VERIFIED: mock results. Select Tavily and save its API Key in Settings > Web search.")
     if not result["results"]:
         sys.exit("Live service responded, but no results. Retry with a broader query; source acceptance is incomplete.")
     print(f"Live search passed: provider={result['provider']}, results={len(result['results'])}")

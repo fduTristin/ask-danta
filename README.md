@@ -63,7 +63,7 @@ Agent 在单轮时间、工具调用次数和树洞分页预算内执行检索�
 python scripts/setup.py
 ```
 
-安装脚本会安装项目依赖，并在 `.env` 不存在时从 [.env.example](.env.example) 创建配置文件。
+安装脚本只安装项目依赖，无需创建 `.env`。
 
 ### 2. 启动应用
 
@@ -80,21 +80,24 @@ python scripts/dev.py
 
 打开侧栏底部的“设置”，在“模型”中填写接口地址、模型名称和 API Key，保存后即可对话，无需修改 `.env` 或重启服务。在“网页搜索”中选择 Tavily 并填写其 API Key，可启用真实网页搜索；“高级”中可调整答案核对、超时、工具调用与内容长度等参数。
 
-API Key 只显示是否已配置，留空保留原值；“清除”操作在保存后生效。设置保存到本机 `.private/settings.json`，优先于 `.env` 中的对应字段。进行中的回答需要完成或停止后才能保存设置。
+API Key 只显示是否已配置，留空保留原值；“清除”操作在保存后生效。设置保存到本机 `.private/settings.json`，重启服务后自动恢复。模型、搜索和回答参数只读取这份设置文件，不读取 `.env` 或同名环境变量。进行中的回答需要完成或停止后才能保存设置。
 
-`.env` 仍可提供默认配置；端口和文件路径需通过环境变量配置，修改后重启服务。主要配置项如下，完整说明见[接口与配置参考](docs/api-reference.md)。
+未保存过的设置使用程序默认值，API Key 默认为空。常用设置如下，完整说明见[接口与配置参考](docs/api-reference.md)。
 
 | 配置项 | 默认值 | 用途 |
 | --- | --- | --- |
-| `MODEL_BASE_URL` | `https://api.deepseek.com` | 模型服务接口地址。 |
-| `MODEL_NAME` | `deepseek-flash` | 对话与工具调用使用的模型名称。 |
-| `MODEL_API_KEY` | 空 | 模型服务认证密钥。 |
-| `SEARCH_PROVIDER` | `mock` | `mock` 使用合成搜索样例；`tavily` 启用真实网页搜索。 |
-| `SEARCH_API_KEY` | 空 | Tavily 服务认证密钥。 |
-| `ANSWER_REVIEW_ENABLED` | `true` | 启用答案语义与证据核对。 |
-| `BACKEND_PORT` / `FRONTEND_PORT` | `8000` / `5173` | 本地后端与前端端口。 |
+| 接口地址 | `https://api.deepseek.com` | 模型服务接口地址。 |
+| 模型名称 | `deepseek-flash` | 对话与工具调用使用的模型名称。 |
+| 模型 API Key | 空 | 模型服务认证密钥。 |
+| 搜索服务 | 合成样例 | 可选择 Tavily 启用真实网页搜索。 |
+| Tavily API Key | 空 | Tavily 服务认证密钥。 |
+| 答案核对 | 开启 | 启用答案语义与证据核对。 |
 
 `mock` 仅替代网页搜索服务，不替代模型服务。使用默认搜索配置时，样例结果会在界面中明确标记，不能作为实际问题的证据。
+
+启动端口与文件路径可通过系统环境变量 `BACKEND_PORT`、`FRONTEND_PORT`、`CAMPUS_AUTH_FILE`、`SESSION_DB_FILE` 指定，修改后重启。默认端口为 `8000`／`5173`，默认路径见下方数据管理表。
+
+从旧版本升级时，可执行 `uv run --frozen python scripts/migrate_settings.py` 一次性导入旧 `.env`。设置页已保存的值会保留，其余用户设置导入本机设置文件；旧文件随后归档到 `.private/legacy-config/`，不再参与启动配置。自定义端口和文件路径需改用系统环境变量。
 
 ### 4. 配置树洞访问（可选）
 
@@ -112,7 +115,7 @@ uv run --frozen python scripts/campus_login.py
 | --- | --- |
 | 会话记录 | `.private/history/chat.sqlite3`，保存聊天消息、必要引用片段与执行记录。 |
 | 树洞凭据 | `.private/campus-tokens.json`，与会话记录分开保存。 |
-| 服务配置 | `.env` 提供默认配置；`.private/settings.json` 保存运行时覆盖项和密钥，仅当前本机用户可访问。 |
+| 服务配置 | `.private/settings.json` 保存用户设置和密钥，重启后恢复，仅当前本机用户可访问。 |
 | 模型输入 | 问题、相关会话上下文及回答所需的检索材料发送至已配置的模型服务。 |
 | 网页搜索 | 启用 Tavily 时，检索词发送至 Tavily 服务。 |
 | 树洞配图 | 展开来源后，由浏览器按需请求 `image.fduhole.com` 图床，不发送当前页面的 Referer。 |

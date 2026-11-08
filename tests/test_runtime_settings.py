@@ -39,13 +39,54 @@ def test_settings_are_write_only_persistent_and_take_effect(tmp_path):
         assert json.loads(calls[-1].content)['max_tokens'] == 800
         assert client.patch('/api/settings', json={'model_name': 'another-model'}).json()['model_api_key_configured']
     assert json.loads(path.read_text())['model_api_key'] == 'new-secret'
-    assert 'search_api_key' not in json.loads(path.read_text())
+    assert json.loads(path.read_text())['search_api_key'] == 'search-secret'
     with TestClient(create_app(config(tmp_path), settings_file=path)) as client:
         assert client.get('/api/health').json()['model']['name'] == 'another-model'
         assert client.patch('/api/settings', json={'model_api_key': ''}).json()['model_api_key_configured'] is False
         assert client.get('/api/health').json()['model']['configured'] is False
     with TestClient(create_app(config(tmp_path), settings_file=path)) as client:
         assert client.get('/api/settings').json()['model_api_key_configured'] is False
+
+
+def test_restart_uses_saved_settings_even_with_conflicting_environment(tmp_path, monkeypatch):
+    path = tmp_path / 'settings.json'
+    monkeypatch.setenv('MODEL_API_KEY', 'must-never-be-used')
+    monkeypatch.setenv('SEARCH_PROVIDER', 'invalid-old-value')
+    base = Settings(_env_file=None, campus_auth_file=tmp_path / 'no-auth')
+    with TestClient(create_app(base, settings_file=path)) as client:
+        assert not client.get('/api/settings').json()['model_api_key_configured']
+        result = client.patch('/api/settings', json={'model_api_key': 'saved-key', 'model_name': 'saved-model',
+                                                    'model_max_tokens': 1024, 'request_budget_seconds': 90})
+        assert result.status_code == 200
+        expected = result.json()
+    with TestClient(create_app(base, settings_file=path)) as client:
+        assert client.get('/api/settings').json() == expected
+        client.patch('/api/settings', json={'model_api_key': ''})
+    with TestClient(create_app(base, settings_file=path)) as client:
+        assert not client.get('/api/health').json()['model']['configured']
+
+
+def test_legacy_migration_preserves_saved_values_and_archives_secrets(tmp_path):
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location('migrate_settings', Path(__file__).resolve().parents[1] / 'scripts/migrate_settings.py')
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    folder = tmp_path / '.private'
+    folder.mkdir()
+    (folder / 'settings.json').write_text(json.dumps({'model_api_key': 'saved-key', 'model_name': 'saved-model'}))
+    legacy = tmp_path / '.env'
+    original = 'MODEL_API_KEY=old-key\nMODEL_NAME=old-model\nSEARCH_API_KEY=search-key\nSEARCH_PROVIDER=tavily\nBACKEND_PORT=8123\n'
+    legacy.write_text(original)
+    count, backup, deployment = migration.migrate(tmp_path)
+    assert count == 2 and deployment == ['BACKEND_PORT']
+    assert not legacy.exists()
+    assert backup.read_text() == original
+    saved = json.loads((folder / 'settings.json').read_text())
+    assert saved['model_api_key'] == 'saved-key' and saved['model_name'] == 'saved-model'
+    assert saved['search_api_key'] == 'search-key' and saved['search_provider'] == 'tavily'
+    assert 'backend_port' not in saved
+    assert migration.migrate(tmp_path) == (0, None, [])
 
 
 @pytest.mark.parametrize('payload', [

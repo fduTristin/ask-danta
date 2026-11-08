@@ -1,32 +1,39 @@
 # Ask Danta 接口与配置参考
 
-## 环境变量
+## 用户设置
 
-应用启动时读取环境变量及 `.env`，再叠加 `.private/settings.json` 中通过设置页保存的字段。设置页保存后立即生效；端口、认证和历史文件路径仍通过环境变量配置，需重启。页面保存过的字段优先于环境变量；未保存的字段继续沿用环境配置。
+模型、搜索与回答参数只读取 `.private/settings.json`；首次启动使用以下默认值，API Key 为空。设置页保存后立即生效并持久化，重启后恢复。应用不读取 `.env`，也不从同名环境变量加载用户设置。
+
+| 字段 | 默认值 | 说明 |
+| --- | --- | --- |
+| `model_base_url` | `https://api.deepseek.com` | OpenAI 兼容模型接口基址 |
+| `model_name` | `deepseek-flash` | DeepSeek 对话与工具调用使用的模型名 |
+| `model_api_key` | 空 | DeepSeek API Key |
+| `model_thinking` | `disabled` | `enabled` / `disabled`，不向前端展示思考内容 |
+| `model_reasoning_effort` | `low` | 开启思考时使用：`low` / `high` / `max` |
+| `model_max_tokens` | `4096` | 模型输出上限，256–32768 |
+| `model_timeout_seconds` | `45` | 单次模型请求的 HTTP 超时及整体截止时间 |
+| `answer_review_enabled` | `true` | 使用独立证据核对断言，再按具体问题修订；每轮最多 4 次核对/改写，共享原总时长。关闭只跳过常规语义核对，引用和显式字数校验仍保留 |
+| `search_provider` | `mock` | `mock` 为离线样例；`tavily` 为真实搜索 |
+| `search_api_key` | 空 | Tavily API Key |
+| `search_max_results` | `5` | 单次最多 1–10 条结果 |
+| `search_max_snippet_chars` | `2000` | 每条摘要最多 100–10000 个字符，截断有标记 |
+| `search_depth` | `advanced` | Tavily `basic` / `advanced`；深入搜索可能消耗更多额度 |
+| `search_timeout_seconds` | 未单独设置 | 搜索及网页读取超时；未设置时沿用 `http_timeout_seconds` |
+| `campus_max_content_chars` | `4000` | 每条树洞正文最多 100–12000 字符，截断有标记 |
+| `http_timeout_seconds` | `15` | 树洞 HTTP 超时及搜索/网页读取的默认超时；模型使用独立配置 |
+| `max_tool_calls` | `12` | 每轮用户请求最多尝试的工具调用数；无效参数和未知工具也计数，已耗尽树洞额度的本地拦截另计 |
+| `max_campus_pages` | `8` | 同一树洞工作流共享的分页尝试预算；独立 HTTP 入口一次读取一页 |
+| `request_budget_seconds` | `150` | 单轮 Agent 总时长，包含检索与最终回答 |
+
+## 部署环境变量
+
+仅以下启动参数读取系统环境变量，修改后重启。用户设置不受这些变量影响。
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `MODEL_BASE_URL` | `https://api.deepseek.com` | OpenAI 兼容模型接口基址 |
-| `MODEL_NAME` | `deepseek-flash` | DeepSeek 对话与工具调用使用的模型名 |
-| `MODEL_API_KEY` | 空 | DeepSeek API Key |
-| `MODEL_THINKING` | `disabled` | `enabled` / `disabled`，不向前端展示思考内容 |
-| `MODEL_REASONING_EFFORT` | `low` | 开启思考时使用：`low` / `high` / `max` |
-| `MODEL_MAX_TOKENS` | `4096` | 模型输出上限，256–32768 |
-| `MODEL_TIMEOUT_SECONDS` | `45` | 单次模型请求的 HTTP 超时及整体截止时间 |
-| `ANSWER_REVIEW_ENABLED` | `true` | 使用独立证据核对断言，再按具体问题修订；每轮最多 4 次核对/改写，共享原总时长。关闭只跳过常规语义核对，引用和显式字数校验仍保留 |
-| `SEARCH_PROVIDER` | `mock` | `mock` 为离线样例；`tavily` 为真实搜索 |
-| `SEARCH_API_KEY` | 空 | Tavily API Key |
-| `SEARCH_MAX_RESULTS` | `5` | 单次最多 1–10 条结果 |
-| `SEARCH_MAX_SNIPPET_CHARS` | `2000` | 每条摘要最多 100–10000 个字符，截断有标记 |
-| `SEARCH_DEPTH` | `advanced` | Tavily `basic` / `advanced`；深入搜索可能消耗更多额度 |
-| `SEARCH_TIMEOUT_SECONDS` | 未单独设置 | 搜索及网页读取超时；未设置时沿用 `HTTP_TIMEOUT_SECONDS` |
 | `CAMPUS_AUTH_FILE` | `.private/campus-tokens.json` | 本项目独立登录保存的 token 对；健康检查读取并校验本地结构，不请求远端，也不返回凭据内容 |
 | `SESSION_DB_FILE` | `.private/history/chat.sqlite3` | 本机聊天记录；使用独立私有目录，数据库与事务文件不进入提交包 |
-| `CAMPUS_MAX_CONTENT_CHARS` | `4000` | 每条树洞正文最多 100–12000 字符，截断有标记 |
-| `HTTP_TIMEOUT_SECONDS` | `15` | 树洞 HTTP 超时及搜索/网页读取的默认超时；模型使用独立配置 |
-| `MAX_TOOL_CALLS` | `12` | 每轮用户请求最多尝试的工具调用数；无效参数和未知工具也计数，已耗尽树洞额度的本地拦截另计 |
-| `MAX_CAMPUS_PAGES` | `8` | 同一树洞工作流共享的分页尝试预算；独立 HTTP 入口一次读取一页 |
-| `REQUEST_BUDGET_SECONDS` | `150` | 单轮 Agent 总时长，包含检索与最终回答 |
 | `BACKEND_PORT` | `8000` | 后端端口，1024–65535 |
 | `FRONTEND_PORT` | `5173` | 前端端口，1024–65535，须与后端不同 |
 

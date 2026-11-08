@@ -13,11 +13,11 @@ from pydantic import ValidationError
 
 from app.campus import CampusService
 from app.campus_auth import CampusError
-from app.config import Settings
+from app.runtime_settings import load_settings, SettingsStorageError
 
 
 async def login(email: str, password: str) -> None:
-    settings = Settings()
+    settings = load_settings()
     async with httpx.AsyncClient(trust_env=False) as client:
         await CampusService(settings, client).login(email, password)
 
@@ -47,8 +47,8 @@ def main() -> int:
         print("登录已取消。", file=sys.stderr)
     except getpass.GetPassWarning:
         print("当前终端不能隐藏密码，请在本机交互终端运行。", file=sys.stderr)
-    except ValidationError:
-        print("本地配置格式无效，请检查 .env。", file=sys.stderr)
+    except (ValidationError, SettingsStorageError):
+        print("本机设置或部署环境变量无效，请检查配置。", file=sys.stderr)
     return 1
 
 

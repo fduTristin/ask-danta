@@ -12,11 +12,11 @@ from pydantic import ValidationError
 
 from app.campus import CampusBudget, CampusService
 from app.campus_auth import CampusError
-from app.config import Settings
+from app.runtime_settings import load_settings
 
 
 async def check(query: str) -> int:
-    settings = Settings()
+    settings = load_settings()
     budget = CampusBudget(settings.max_campus_pages)
     async with httpx.AsyncClient(trust_env=False) as client:
         service = CampusService(settings, client)

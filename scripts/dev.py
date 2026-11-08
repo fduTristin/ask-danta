@@ -47,7 +47,7 @@ def main() -> int:
     try:
         settings = Settings()
     except ValidationError as exc:
-        print("Invalid configuration. Check these fields in .env:", file=sys.stderr)
+        print("Invalid deployment environment variables:", file=sys.stderr)
         for error in exc.errors(include_input=False, include_context=False):
             print(f"  {'.'.join(map(str, error['loc'])) or 'ports'}: {error['type']}", file=sys.stderr)
         return 1
@@ -61,7 +61,7 @@ def main() -> int:
             try:
                 sock.bind(("127.0.0.1", port))
             except OSError:
-                print(f"Port {port} is already in use. Change ports in .env or stop the existing service.", file=sys.stderr)
+                print(f"Port {port} is already in use. Set BACKEND_PORT / FRONTEND_PORT or stop the existing service.", file=sys.stderr)
                 return 1
 
     def interrupted(signum, frame):

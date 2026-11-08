@@ -12,6 +12,8 @@ from .campus_auth import restrict_file
 from .config import Settings
 from .sessions import private_directory
 
+SETTINGS_FILE = Path(__file__).resolve().parents[2] / ".private/settings.json"
+
 FIELDS = (
     "model_base_url", "model_name", "model_api_key", "model_thinking", "model_reasoning_effort",
     "model_max_tokens", "model_timeout_seconds", "answer_review_enabled", "search_provider",
@@ -38,10 +40,10 @@ def public_settings(settings: Settings) -> dict:
 class RuntimeSettingsStore:
     def __init__(self, base: Settings, path: Path):
         self.base, self.path = base, path
-        self.overrides: dict = {}
+        self.saved: dict = {}
 
     def merge(self, changes: dict) -> Settings:
-        return Settings(_env_file=None, **{**self.base.model_dump(), **self.overrides, **changes})
+        return Settings(**{**self.base.model_dump(), **self.saved, **changes})
 
     def load(self) -> Settings:
         try:
@@ -52,16 +54,16 @@ class RuntimeSettingsStore:
             if self.path.stat().st_size > 100_000:
                 raise ValueError("Invalid settings size")
             patch = SettingsPatch.model_validate_json(self.path.read_text(encoding="utf-8"))
-            self.overrides = patch.model_dump(exclude_unset=True)
+            self.saved = patch.model_dump(exclude_unset=True)
             return self.merge({})
         except (OSError, ValueError, ValidationError):
             raise SettingsStorageError("无法读取本机设置，请检查 .private/settings.json 的格式与权限。") from None
 
     def save(self, changes: dict) -> Settings:
         settings = self.merge(changes)
-        overrides = {**self.overrides, **changes}
-        payload = settings.model_dump(mode="json", include=set(overrides))
-        for name in SECRETS & overrides.keys():
+        # Persist the entire effective user configuration, including blank keys.
+        payload = settings.model_dump(mode="json", include=set(FIELDS))
+        for name in SECRETS:
             payload[name] = getattr(settings, name).get_secret_value()
         temporary = None
         try:
@@ -85,5 +87,10 @@ class RuntimeSettingsStore:
                     temporary.unlink(missing_ok=True)
                 except OSError:
                     pass
-        self.overrides = overrides
+        self.saved = settings.model_dump(include=set(FIELDS))
         return settings
+
+
+def load_settings() -> Settings:
+    """Shared entry point for live CLI tools and the application."""
+    return RuntimeSettingsStore(Settings(), SETTINGS_FILE).load()

@@ -15,8 +15,8 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
-from .config import ROOT, Settings
-from .runtime_settings import RuntimeSettingsStore, SettingsStorageError, SettingsPatch, public_settings
+from .config import Settings
+from .runtime_settings import SETTINGS_FILE, RuntimeSettingsStore, SettingsStorageError, SettingsPatch, public_settings
 from .search import SearchError, SearchRequest, SearchResponse, SearchService
 from .model import ModelError, ModelService
 from .agent import Agent, ChatRequest, Session
@@ -28,7 +28,7 @@ from .progress import Progress
 
 def create_app(settings: Settings | None = None, transport=None, *, settings_file: Path | None = None) -> FastAPI:
     # Injected applications (tests/demos) keep settings beside their own history.
-    settings_file = settings_file or (settings.sessions_path.parent / "settings.json" if settings else ROOT / ".private/settings.json")
+    settings_file = settings_file or (settings.sessions_path.parent / "settings.json" if settings else SETTINGS_FILE)
     settings = settings or Settings()
     settings_store = RuntimeSettingsStore(settings, settings_file)
     settings = settings_store.load()
