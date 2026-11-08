@@ -4,15 +4,19 @@ import json
 from copy import deepcopy
 from datetime import datetime, timezone
 from uuid import UUID
+from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
+from pydantic import ValidationError
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
-from .config import Settings
+from .config import ROOT, Settings
+from .runtime_settings import RuntimeSettingsStore, SettingsStorageError, SettingsPatch, public_settings
 from .search import SearchError, SearchRequest, SearchResponse, SearchService
 from .model import ModelError, ModelService
 from .agent import Agent, ChatRequest, Session
@@ -22,8 +26,12 @@ from .sessions import SessionStore, SessionStorageError, SessionUpdate, SessionF
 from .progress import Progress
 
 
-def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
+def create_app(settings: Settings | None = None, transport=None, *, settings_file: Path | None = None) -> FastAPI:
+    # Injected applications (tests/demos) keep settings beside their own history.
+    settings_file = settings_file or (settings.sessions_path.parent / "settings.json" if settings else ROOT / ".private/settings.json")
     settings = settings or Settings()
+    settings_store = RuntimeSettingsStore(settings, settings_file)
+    settings = settings_store.load()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -31,6 +39,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
             timeout=settings.http_timeout_seconds, transport=transport,
             follow_redirects=False, trust_env=False,
         ) as client:
+            app.state.client = client
             app.state.search = SearchService(settings, client)
             app.state.campus = CampusService(settings, client)
             app.state.agent = Agent(settings, ModelService(settings, client), app.state.search, campus=app.state.campus)
@@ -51,6 +60,28 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
 
     app = FastAPI(title="Ask Danta", version="0.6.0", lifespan=lifespan)
 
+    @app.exception_handler(SettingsStorageError)
+    async def settings_storage_error(request: Request, exc: SettingsStorageError):
+        return JSONResponse(status_code=503, content={"error": {"code": "settings_storage_error", "message": str(exc)}},
+                            headers={"Cache-Control": "no-store"})
+
+    @app.middleware("http")
+    async def protect_settings(request: Request, call_next):
+        if request.url.path == "/api/settings":
+            origin = request.headers.get("origin")
+            try:
+                foreign = bool(origin and (urlsplit(origin).hostname != request.url.hostname or urlsplit(origin).scheme not in ("http", "https")))
+            except ValueError:
+                foreign = True
+            if foreign or request.headers.get("sec-fetch-site") == "cross-site":
+                return JSONResponse(status_code=403, content={"detail": "请从本机应用设置页操作。"})
+            if request.method == "PATCH" and request.headers.get("content-type", "").split(";")[0] != "application/json":
+                return JSONResponse(status_code=415, content={"detail": "设置请求必须使用 JSON。"})
+        response = await call_next(request)
+        if request.url.path == "/api/settings":
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     @app.exception_handler(SessionStorageError)
     async def storage_error_handler(request: Request, exc: SessionStorageError):
         return JSONResponse(status_code=503, content={"error": {"code": "history_storage_error", "message": str(exc)}})
@@ -64,6 +95,9 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request: Request, exc: RequestValidationError):
+        if request.url.path == "/api/settings":
+            return JSONResponse(status_code=422, content={"error": {"code": "settings_invalid", "message": "设置格式无效，请检查地址、参数范围和字段类型。"}},
+                                headers={"Cache-Control": "no-store"})
         if request.url.path == "/api/campus/login":
             # FastAPI's default validation errors may include raw request input,
             # including the whole body for malformed JSON. Never echo login data.
@@ -71,6 +105,26 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                 "code": "campus_invalid_login", "message": "请输入有效邮箱和非空密码。",
             }}, headers={"Cache-Control": "no-store"})
         return await request_validation_exception_handler(request, exc)
+
+    @app.get("/api/settings")
+    async def read_settings():
+        return public_settings(settings)
+
+    @app.patch("/api/settings")
+    async def update_settings(body: SettingsPatch):
+        nonlocal settings
+        if any(session.busy for session in app.state.sessions.values()):
+            raise HTTPException(409, "请等待回答完成或停止回答后保存设置。")
+        try:
+            updated = settings_store.save(body.model_dump(exclude_unset=True))
+        except ValidationError:
+            raise HTTPException(422, "设置无效，请检查模型地址、名称和参数范围。") from None
+        settings = updated
+        client = app.state.client
+        app.state.search = SearchService(settings, client)
+        app.state.campus = CampusService(settings, client)
+        app.state.agent = Agent(settings, ModelService(settings, client), app.state.search, campus=app.state.campus)
+        return public_settings(settings)
 
     @app.get("/api/health")
     async def health():
@@ -220,7 +274,7 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
         session = get_session(session_id)
         ensure_idle(session)
         if not settings.model_api_key.get_secret_value():
-            raise ModelError("model_not_configured", "请在本地 .env 填写 MODEL_API_KEY 并重启服务。", 503)
+            raise ModelError("model_not_configured", "请在设置中填写模型 API Key。", 503)
         before = deepcopy(session)
         progress = Progress()
         session.progress = progress.value

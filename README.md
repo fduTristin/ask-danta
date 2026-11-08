@@ -116,7 +116,7 @@ uv run --frozen python scripts/campus_login.py
 | --- | --- |
 | 会话记录 | `.private/history/chat.sqlite3`，保存聊天消息、必要引用片段与执行记录。 |
 | 树洞凭据 | `.private/campus-tokens.json`，与会话记录分开保存。 |
-| 服务配置 | 项目根目录 `.env`，包含模型及搜索服务配置。 |
+| 服务配置 | `.env` 提供默认配置；`.private/settings.json` 保存运行时覆盖项和密钥，仅当前本机用户可访问。 |
 | 模型输入 | 问题、相关会话上下文及回答所需的检索材料发送至已配置的模型服务。 |
 | 网页搜索 | 启用 Tavily 时，检索词发送至 Tavily 服务。 |
 | 树洞配图 | 展开来源后，由浏览器按需请求 `image.fduhole.com` 图床，不发送当前页面的 Referer。 |

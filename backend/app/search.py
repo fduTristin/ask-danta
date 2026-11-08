@@ -67,7 +67,7 @@ class SearchService:
                 )],
             )
         if not self.settings.search_configured:
-            raise SearchError("search_not_configured", "请在项目根目录 .env 中填写 SEARCH_API_KEY 并重启服务。", 503)
+            raise SearchError("search_not_configured", "请在设置的网页搜索中填写 Tavily API Key。", 503)
         try:
             # An overall deadline also bounds a server that slowly streams bytes.
             async with asyncio.timeout(self.settings.search_timeout):

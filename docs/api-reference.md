@@ -2,6 +2,8 @@
 
 ## 环境变量
 
+应用启动时读取环境变量及 `.env`，再叠加 `.private/settings.json` 中通过设置页保存的字段。设置页保存后立即生效；端口、认证和历史文件路径仍通过环境变量配置，需重启。页面保存过的字段优先于环境变量；未保存的字段继续沿用环境配置。
+
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `MODEL_BASE_URL` | `https://api.deepseek.com` | OpenAI 兼容模型接口基址 |
@@ -29,6 +31,8 @@
 | `FRONTEND_PORT` | `5173` | 前端端口，1024–65535，须与后端不同 |
 
 ## 健康检查与网页搜索
+
+`GET /api/settings` 返回可编辑配置及 `model_api_key_configured`／`search_api_key_configured`，不返回密钥。`PATCH /api/settings` 只更新请求中出现的字段；省略密钥表示保留，空字符串表示清除。支持上述模型、搜索、答案核对与预算参数，不支持修改端口或文件路径。响应禁止缓存，参数错误不会回显输入；写入失败保持旧配置，有会话正在回答时返回 `409`。设置以当前用户可访问的权限原子写入本机私有文件，不能用于多用户远程部署。
 
 `GET /api/health` 返回 `stage=6`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 与 `campus.available` 保持 `false`（健康检查不验证远端可用性）；`campus.credentials_present` 仅表示文件存在；`auth_state` 为 `missing/invalid/expired/configured`，`tools_enabled` 代表本地凭据可用于尝试调用，不保证远端仍有效。`skills` 列出已加载的 `campus-research`。
 
@@ -73,6 +77,7 @@
 | `GET /api/sessions` | 按最近活动排序的会话摘要；未提问的空白会话不出现在列表中 |
 | `GET /api/sessions/{session_id}` | 读取已完成的用户/助手消息、来源与忙碌状态 |
 | `PATCH /api/sessions/{session_id}` | 修改 `title`（1–80 字符）或 `source_preference`（`auto/web/all`） |
+| `POST /api/sessions/{session_id}/fork` | 以 `message_index` 指定用户消息位置，提供 `expected_message_count` 校验会话未变；创建只包含该消息之前上下文的新会话，保留原会话 |
 | `POST /api/sessions/{session_id}/clear` | 清空历史、用户条件与检索来源，保留会话 ID |
 | `DELETE /api/sessions/{session_id}` | 删除会话 |
 | `POST /api/sessions/{session_id}/cancel` | 主动取消当前回答，返回 202；读取会话确认 `busy=false` 后可切换或删除 |

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     model_base_url: HttpUrl = "https://api.deepseek.com"
     model_name: str = Field(default="deepseek-flash", min_length=1, max_length=200)
-    model_api_key: SecretStr = SecretStr("")
+    model_api_key: SecretStr = Field(default=SecretStr(""), max_length=8192)
     model_thinking: Literal["enabled", "disabled"] = "disabled"
     model_reasoning_effort: Literal["low", "high", "max"] = "low"
     model_max_tokens: int = Field(default=4096, ge=256, le=32768)
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     search_timeout_seconds: float | None = Field(default=None, gt=0, le=120)
     answer_review_enabled: bool = True
     search_provider: Literal["mock", "tavily"] = "mock"
-    search_api_key: SecretStr = SecretStr("")
+    search_api_key: SecretStr = Field(default=SecretStr(""), max_length=8192)
     search_depth: Literal["basic", "advanced"] = "advanced"
     search_max_results: int = Field(default=5, ge=1, le=10)
     search_max_snippet_chars: int = Field(default=2000, ge=100, le=10000)
@@ -37,9 +37,25 @@ class Settings(BaseSettings):
     backend_port: int = Field(default=8000, ge=1024, le=65535)
     frontend_port: int = Field(default=5173, ge=1024, le=65535)
 
+    @field_validator("model_base_url")
+    @classmethod
+    def plain_endpoint(cls, value):
+        if value.username or value.password or value.query or value.fragment:
+            raise ValueError("Use a base URL without credentials, query or fragment")
+        return value
+
+    @field_validator("model_name")
+    @classmethod
+    def nonempty_model(cls, value):
+        if not value.strip():
+            raise ValueError("Model name is required")
+        return value.strip()
+
     @field_validator("model_api_key", "search_api_key", mode="before")
     @classmethod
     def trim_key(cls, value):
+        if isinstance(value, SecretStr):
+            value = value.get_secret_value()
         return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")

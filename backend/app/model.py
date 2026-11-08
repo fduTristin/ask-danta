@@ -65,7 +65,7 @@ class ModelService:
 
     async def complete(self, messages: list[dict], tools: list[dict]) -> AssistantMessage:
         if not self.settings.model_api_key.get_secret_value():
-            raise ModelError("model_not_configured", "请在本地 .env 填写 MODEL_API_KEY 并重启服务。", 503)
+            raise ModelError("model_not_configured", "请在设置中填写模型 API Key。", 503)
         body = {
             "model": self.settings.model_name, "messages": messages,
             "stream": False, "thinking": {"type": self.settings.model_thinking},
