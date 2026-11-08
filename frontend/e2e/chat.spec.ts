@@ -377,7 +377,7 @@ test('rechecking a committed answer removes the stale failed message', async ({ 
   await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEmpty();
 });
 
-test('copy and edit a user message into a new conversation', async ({ page, context, request }) => {
+test('copy and edit an earlier user message in the same conversation', async ({ page, context, request }) => {
   await ask(page, '原始问题');
   const original = (await (await request.get('/api/sessions')).json()).sessions[0].session_id;
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -388,13 +388,22 @@ test('copy and edit a user message into a new conversation', async ({ page, cont
   await page.getByRole('textbox', { name: '编辑消息', exact: true }).fill('修改后的问题');
   await page.getByRole('button', { name: '取消', exact: true }).click();
   await expect(page.locator('.user p')).toHaveText('原始问题');
-  await page.locator('.user').hover();
-  await page.getByRole('button', { name: '编辑并重新发送' }).click();
+  await page.getByRole('textbox', { name: '你的问题或追问' }).fill('后续问题');
+  await page.getByRole('button', { name: '发送', exact: true }).click();
+  await expect(page.locator('.assistant')).toHaveCount(2);
+  await page.locator('.user').first().hover();
+  await page.getByRole('button', { name: '编辑并重新发送' }).first().click();
+  await expect(page.getByText('在当前对话中重新回答；这条问题及其后的内容将被替换。')).toBeVisible();
   await page.getByRole('textbox', { name: '编辑消息', exact: true }).fill('修改后的问题');
   await page.getByRole('button', { name: '发送修改', exact: true }).click();
   await expect(page.locator('.user p')).toHaveText('修改后的问题');
   await expect(page.locator('.assistant')).toHaveCount(1);
-  expect((await (await request.get(`/api/sessions/${original}`)).json()).messages[0].content).toBe('原始问题');
+  const saved = await (await request.get(`/api/sessions/${original}`)).json();
+  expect(saved.messages).toHaveLength(2);
+  expect(saved.messages[0].content).toBe('修改后的问题');
+  const sessions = (await (await request.get('/api/sessions')).json()).sessions;
+  expect(sessions).toHaveLength(1);
+  expect(sessions[0].session_id).toBe(original);
   await page.reload();
   await expect(page.locator('.user p')).toHaveText('修改后的问题');
   for (const width of [1440, 390]) {

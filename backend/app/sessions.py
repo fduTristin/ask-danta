@@ -28,6 +28,11 @@ class SessionFork(BaseModel):
     expected_message_count: int = Field(ge=0)
 
 
+class SessionEdit(SessionFork):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    message: str = Field(min_length=1, max_length=8000)
+
+
 def fork_session(session: Session, index: int) -> Session:
     """Keep only the context preceding the edited user message."""
     branch = Session(title=session.title + "（编辑）", source_preference=session.source_preference)

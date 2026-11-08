@@ -15,7 +15,7 @@ export function UserMessage({ content, disabled, failed = false, onSend }: {
   return <article className={`message user${failed ? ' failed' : ''}`}>
     {editing ? <form className="message-editor" onSubmit={event => { event.preventDefault(); if (draft.trim() && !disabled) onSend(draft.trim()); }}>
       <textarea aria-label="编辑消息" autoFocus value={draft} maxLength={8000} disabled={disabled} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') setEditing(false); }} />
-      {!failed && <small>从此处开始新对话，原对话保留。</small>}
+      {!failed && <small>在当前对话中重新回答；这条问题及其后的内容将被替换。</small>}
       <div className="message-edit-actions"><button type="button" disabled={disabled} onClick={() => setEditing(false)}>取消</button><button className="primary" disabled={disabled || !draft.trim()}>发送修改</button></div>
     </form> : <><p>{content}</p><div className="message-actions">
       <button type="button" aria-label={copied ? '已复制消息' : '复制消息'} title="复制消息" onClick={() => void copy()}>{copied ? <Check /> : <Copy />}</button>

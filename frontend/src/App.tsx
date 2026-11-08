@@ -278,8 +278,10 @@ export function App() {
       if (effectiveMode === 'all' && !localStorage.getItem('danta-campus-consent')) { setConsentMode(mode); setConsent(true); return; }
       if (editIndex !== undefined && sessionRef.current) {
         const original = sessionRef.current;
-        const target = await api<Session>(`/api/sessions/${original.session_id}/${intent === 'retry' ? 'retry' : 'fork'}`, 'POST', { message_index: editIndex, expected_message_count: original.messages.length });
-        if (intent === 'edit') drafts.current.set(original.session_id, inputRef.current);
+        const target = await api<Session>(`/api/sessions/${original.session_id}/${intent}`, 'POST', {
+          message_index: editIndex, expected_message_count: original.messages.length,
+          ...(intent === 'edit' ? { message: question } : {}),
+        });
         install(target); editInput(question);
       }
       setFailedQuestion(''); setProgress(null); setBusy(true); setPendingQuestion(question); nearBottom.current = true;
