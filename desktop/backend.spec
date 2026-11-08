@@ -3,7 +3,7 @@ from pathlib import Path
 root = Path(SPECPATH).parent
 a = Analysis([str(root / 'desktop/backend.py')], pathex=[str(root / 'backend')],
     datas=[(str(root / 'frontend/dist'), 'frontend/dist'),
-           (str(root / 'skills/campus-research/SKILL.md'), 'skills/campus-research')],
+           (str(root / 'skills/ask-danta-research/SKILL.md'), 'skills/ask-danta-research')],
     hiddenimports=['uvicorn.logging', 'uvicorn.loops.auto', 'uvicorn.protocols.http.auto',
                    'uvicorn.protocols.http.h11_impl', 'uvicorn.protocols.websockets.auto',
                    'uvicorn.lifespan.on'], excludes=['pytest'])

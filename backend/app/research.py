@@ -16,11 +16,11 @@ class ResearchSkill:
 
 
 def load_research_skill() -> ResearchSkill:
-    text = (ROOT / "skills/campus-research/SKILL.md").read_text(encoding="utf-8")
+    text = (ROOT / "skills/ask-danta-research/SKILL.md").read_text(encoding="utf-8")
     # This bundled skill uses a deliberately small, single-line YAML header.
     header, body = text.removeprefix("---\n").split("\n---\n", 1)
     metadata = dict(line.split(": ", 1) for line in header.splitlines())
-    if metadata.get("name") != "campus-research" or not metadata.get("description") or not body.strip():
+    if metadata.get("name") != "ask-danta-research" or not metadata.get("description") or not body.strip():
         raise ValueError("Invalid bundled campus research skill")
     return ResearchSkill(metadata["name"], metadata["description"], body.strip())
 

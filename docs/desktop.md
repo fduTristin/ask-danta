@@ -19,6 +19,8 @@ Python 后端须在目标系统和目标架构上构建。不要在 Windows 构�
 
 ## 数据位置
 
+独立后端端口握手与健康就绪各允许等待 120 秒；正常退出允许等待 60 秒，超时后终止后端。桌面应用和构建 smoke 检查采用相同等待预算，避免 Windows 首次启动或进程清理较慢时过早失败。这些等待时间不改变模型调用、搜索或单轮问答的超时设置。
+
 本机网络若无法下载 GitHub 的 Electron 二进制，可在当前终端临时设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 和 `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/` 后重试。Electron 安装失败时运行 `npx install-electron`；已安装的 Electron 可通过 `npx electron-builder --publish never --config.electronDist=node_modules/electron/dist` 复用（先运行 `npm run build`）。镜像为第三方下载来源，Electron 下载仍使用包内校验和；这些设置不写入仓库或全局环境。
 
 桌面数据保存在 Electron `userData` 下的 `.private/`，包括 `settings.json`、`campus-tokens.json` 和 `history/chat.sqlite3`。默认目录为：
@@ -37,8 +39,8 @@ Python 后端须在目标系统和目标架构上构建。不要在 Windows 构�
 
 ```sh
 git push origin HEAD
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 发布后不要移动标签。后续版本先更新根目录版本与 npm 锁文件、提交，再推送新标签。手动构建不创建 Release。构建任务只有读取权限，Release 任务单独授予 `contents: write`；仓库或组织设置必须允许 Actions 运行及该权限。
@@ -47,7 +49,7 @@ git push origin v0.1.0
 
 当前配置未使用开发者证书签名，macOS 使用临时 ad-hoc 签名。Windows 可能出现未知发布者或 SmartScreen 提示，macOS 下载包可能被 Gatekeeper 拦截；面向公开用户正式分发前建议配置签名与 macOS 公证。本项目尚未接入自动更新。
 
-应用名称暂定 Ask Danta，标识为 `io.github.fdutristin.askdanta`，版本为 `0.1.0`。应用图标使用 `frontend/public/danta-logo.webp`，转换后的 ICO、ICNS 和 PNG 保存在 `desktop/icons/` 并随源码提交，供本地与 Actions 构建使用。替换 logo 后运行 `uv run --with pillow==12.2.0 python scripts/build_icons.py` 重新生成图标。桌面启动时关闭 Electron 默认菜单；macOS 额外保留常用编辑、退出与关闭窗口快捷键。
+应用名称暂定 Ask Danta，标识为 `io.github.fdutristin.askdanta`，版本为 `0.1.1`。应用图标使用 `frontend/public/danta-logo.webp`，转换后的 ICO、ICNS 和 PNG 保存在 `desktop/icons/` 并随源码提交，供本地与 Actions 构建使用。替换 logo 后运行 `uv run --with pillow==12.2.0 python scripts/build_icons.py` 重新生成图标。桌面启动时关闭 Electron 默认菜单；macOS 额外保留常用编辑、退出与关闭窗口快捷键。
 
 若需签名，请提供证书类型及 Apple Developer 团队信息，证书和密码应存入 GitHub Secrets，不要提交到仓库或发送到聊天。接入签名时须调整当前关闭签名的构建配置并配置相应 Secrets。
 

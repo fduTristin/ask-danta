@@ -44,7 +44,7 @@ Agent 规划与工具选择
 返回回答、来源引用与执行记录 → 保存至本机会话
 ```
 
-Agent 在单轮时间、工具调用次数和树洞分页预算内执行检索。校园调研策略由仓库内的 [campus-research Skill](skills/campus-research/SKILL.md) 提供。执行状态实时推送，回答正文在核对完成后统一展示。
+Agent 在单轮时间、工具调用次数和树洞分页预算内执行检索。校园调研策略由仓库内的 [ask-danta-research Skill](skills/ask-danta-research/SKILL.md) 提供。执行状态实时推送，回答正文在核对完成后统一展示。
 
 答案核对与修订使用非思考模式，主回答和检索决策仍遵守设置页的思考选项。核对保留完整证据、引用与用户要求校验，修订后按预算重新核对；相同原文不再重复附在核对记录中。小样本速度对照见[核对速度验证](docs/review-speed-verification.md)。
 
@@ -154,7 +154,7 @@ backend/app/              后端接口、Agent、模型与数据源适配器
 frontend/src/             前端页面、交互组件与样式
 frontend/e2e/             浏览器端回归测试
 tests/                    后端及适配器测试
-skills/campus-research/   校园调研策略
+skills/ask-danta-research/   校园调研策略
 scripts/                  安装、启动、验证与演示录制脚本
 docs/                     接口文档与演示素材
 plan.md                   开发计划与阶段验收记录

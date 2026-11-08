@@ -38,7 +38,7 @@ CAMPUS_TOOLS = [{"type": "function", "function": {
     "parameters": CampusThreadRequest.model_json_schema(),
 }}]
 PLAN_TOOL = {"type": "function", "function": {
-    "name": "plan_research", "description": "复杂校园调研记录或更新子问题、证据缺口和下一步行动，应用 campus-research Skill；简单聊天不用。只记录工作计划，不记录内部思考。",
+    "name": "plan_research", "description": "复杂校园调研记录或更新子问题、证据缺口和下一步行动，应用 ask-danta-research Skill；简单聊天不用。只记录工作计划，不记录内部思考。",
     "parameters": ResearchPlan.model_json_schema(),
 }}
 ARGUMENTS = {"search_web": SearchRequest, "read_web": ReadRequest,

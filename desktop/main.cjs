@@ -3,6 +3,8 @@ const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const path = require('node:path');
 const readline = require('node:readline');
+const STARTUP_TIMEOUT_MS = 120000;
+const SHUTDOWN_TIMEOUT_MS = 60000;
 
 let backend;
 let window;
@@ -27,7 +29,7 @@ async function start() {
     if (!quitting) fail(new Error('本地服务已退出，请重新启动应用。'));
   });
   const port = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('本地服务启动超时。')), 30000);
+    const timer = setTimeout(() => reject(new Error('本地服务启动超时。')), STARTUP_TIMEOUT_MS);
     backend.once('error', reject);
     backend.once('exit', () => reject(new Error('本地服务无法启动。')));
     const lines = readline.createInterface({ input: backend.stdout });
@@ -39,7 +41,8 @@ async function start() {
   });
   const origin = `http://127.0.0.1:${port}`;
   let ready = false;
-  for (let i = 0; i < 150; i++) {
+  const readyDeadline = Date.now() + STARTUP_TIMEOUT_MS;
+  while (Date.now() < readyDeadline) {
     try {
       const response = await fetch(`${origin}/api/health`, { headers: { 'x-desktop-token': token }, signal: AbortSignal.timeout(1000) });
       if (response.ok) { ready = true; break; }
@@ -98,7 +101,7 @@ app.on('before-quit', event => {
   event.preventDefault();
   quitting = true;
   backend.stdin.end();
-  const timer = setTimeout(() => { backend.kill(); app.exit(process.exitCode || 0); }, 5000);
+  const timer = setTimeout(() => { backend.kill(); app.exit(process.exitCode || 0); }, SHUTDOWN_TIMEOUT_MS);
   backend.once('exit', () => { clearTimeout(timer); app.exit(process.exitCode || 0); });
 });
 app.on('window-all-closed', () => app.quit());

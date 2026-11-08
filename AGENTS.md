@@ -6,7 +6,7 @@
 - `frontend/src/`: React/TypeScript interface and CSS; keep UI assets here. `frontend/vite.config.ts` configures the `/api` development proxy.
 - `tests/`: backend and adapter tests using synthetic responses.
 - `scripts/`: dependency installation, development server supervision, and live-search checks.
-- `skills/campus-research/`: repository-owned research Skill, loaded by `backend/app/research.py` and applied in the Agent.
+- `skills/ask-danta-research/`: repository-owned research Skill, loaded by `backend/app/research.py` and applied in the Agent.
 - `plan.md`: milestones. Update it and `README.md` when behavior changes; distinguish implemented features from plans.
 
 ## Build, Test, and Development Commands

@@ -4,7 +4,7 @@
 
 ## 实现与权限
 
-- 后端固定路径加载 `skills/campus-research/SKILL.md`，将适用条件和流程提供给模型。复杂调研可调用 `plan_research` 记录子问题、证据缺口和下一步；普通聊天不强制调研。
+- 后端固定路径加载 `skills/ask-danta-research/SKILL.md`，将适用条件和流程提供给模型。复杂调研可调用 `plan_research` 记录子问题、证据缺口和下一步；普通聊天不强制调研。
 - 将 `search_campus_posts(query, offset, limit)`、`read_campus_thread(hole_id, offset, limit)` 注册到原有多轮 Agent。两者共用单轮 3 页预算，仍受 6 次工具尝试、90 秒总时长约束。
 - 请求支持 `source_mode=web/all`，省略时根据本地认证状态决定。禁用的工具同时从模型声明中移除并在执行处拒绝，不能仅靠提示词限制。
 - 网页使用 W 编号和真实 URL，树洞使用 C 编号、洞号和楼层 ID，不拼造帖子链接。读取详情保留“部分楼层”与截断标记；Agent 工具结果中的楼层正文只保存一份。

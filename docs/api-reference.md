@@ -41,7 +41,7 @@
 
 `GET /api/settings` 返回可编辑配置及 `model_api_key_configured`／`search_api_key_configured`，不返回密钥。`PATCH /api/settings` 只更新请求中出现的字段；省略密钥表示保留，空字符串表示清除。支持上述模型、搜索、答案核对与预算参数，不支持修改端口或文件路径。响应禁止缓存，参数错误不会回显输入；写入失败保持旧配置，有会话正在回答时返回 `409`。设置以当前用户可访问的权限原子写入本机私有文件，不能用于多用户远程部署。
 
-`GET /api/health` 返回 `stage=6`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 与 `campus.available` 保持 `false`（健康检查不验证远端可用性）；`campus.credentials_present` 仅表示文件存在；`auth_state` 为 `missing/invalid/expired/configured`，`tools_enabled` 代表本地凭据可用于尝试调用，不保证远端仍有效。`skills` 列出已加载的 `campus-research`。
+`GET /api/health` 返回 `stage=6`、运行状态、非敏感配置状态和预算。`status=ok` 只代表本地后端存活；`model.chat_enabled` 表示已配置可发起对话。`model.available` 与 `campus.available` 保持 `false`（健康检查不验证远端可用性）；`campus.credentials_present` 仅表示文件存在；`auth_state` 为 `missing/invalid/expired/configured`，`tools_enabled` 代表本地凭据可用于尝试调用，不保证远端仍有效。`skills` 列出已加载的 `ask-danta-research`。
 
 `POST /api/search` 保留为独立搜索验证入口；同一搜索适配器已注册为 Agent 的 `search_web(query)` 工具。请求：
 

@@ -77,7 +77,7 @@ def test_cross_source_plan_search_thread_read_and_stable_citations(tmp_path):
         final = events[-1]
         assert events[0]["allowed_sources"] == ["web", "campus"]
         assert final["tool_calls"] == 4 and final["campus_pages"] == 2
-        assert final["message"]["skill"] == "campus-research"
+        assert final["message"]["skill"] == "ask-danta-research"
         assert final["message"]["plan"] == plan
         assert [s["id"] for s in final["message"]["sources"]] == ["W1", "C1", "C2"]
         campus_sources = [s for s in final["session_sources"] if s["source"] == "campus"]
