@@ -182,7 +182,45 @@ button.danger:hover:not(:disabled) { background: #fbe1de; color: #8e2c29; }
 .login-fields { display: grid; gap: 12px; font-size: 13px; }
 .login-fields button { background: var(--blue); color: #fff; justify-self: start; }
 .login-success { color: #277452; font-size: 13px; }
-.settings-history { margin-top: 24px; padding-top: 8px; border-top: 1px solid var(--border); }
+.modal.settings-modal { width: 760px; padding: 0; }
+.settings-modal .modal-heading { padding: 20px 24px 16px; margin: 0; border-bottom: 1px solid var(--border); }
+.settings-layout { display: grid; grid-template-columns: 154px minmax(0, 1fr); min-height: 390px; }
+.settings-nav { padding: 16px 10px; border-right: 1px solid var(--border); background: #fafbfd; }
+.settings-nav button { width: 100%; justify-content: flex-start; font-size: 13px; margin-bottom: 4px; }
+.settings-nav button[aria-current="page"] { color: var(--blue); background: var(--sidebar); }
+.settings-content { min-width: 0; padding: 18px 26px 24px; }
+.settings-content h3 { margin: 0 0 20px; font-size: 16px; }
+.settings-content fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }
+.settings-fields { display: grid; gap: 18px; font-size: 13px; }
+.settings-fields > .help { margin: -14px 0 -2px; }
+.settings-fields input, .settings-fields select { font-size: 13px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 42px; }
+.setting-row small { display: block; font-size: 12px; margin-top: 4px; }
+.setting-row input[type="number"] { width: 126px; flex-shrink: 0; margin: 0; }
+.setting-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--blue); flex-shrink: 0; margin: 0; }
+.settings-fields select { max-width: 55%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: inherit; }
+.secret-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.setting-status { color: var(--muted); font-size: 12px; }
+.secret-input { display: flex; align-items: center; gap: 6px; }
+.secret-input input { min-width: 0; }
+.secret-input button { flex-shrink: 0; margin-top: 6px; }
+.settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; border-top: 1px solid var(--border); }
+.settings-footer .help { margin: 0; }
+.settings-footer button { min-width: 72px; flex-shrink: 0; }
+.account-status { display: block; font-size: 12px; margin-top: 2px; }
+.campus-login .section-heading { margin-bottom: 22px; }
+.settings-content .login-success { margin-top: 12px; }
+@media (max-width: 600px) {
+  .settings-modal .modal-heading { padding: 16px; }
+  .settings-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; min-height: 0; }
+  .settings-nav { display: flex; gap: 2px; padding: 8px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .settings-nav button { justify-content: center; gap: 5px; padding: 7px 5px; margin: 0; white-space: nowrap; font-size: 12px; }
+  .settings-nav svg { width: 14px; height: 14px; }
+  .settings-content { padding: 18px 16px; }
+  .settings-footer { padding: 12px 16px; }
+  .setting-row { gap: 10px; }
+  .setting-row input[type="number"] { width: 108px; }
+}
 .drawer { margin: 0 auto 0 0; width: min(300px, 88%); height: var(--app-height, 100dvh); max-height: 100dvh; border-radius: 0 16px 16px 0; border: 0; padding: 16px; }
 .drawer[open] { display: flex; flex-direction: column; gap: 20px; }
 .drawer .modal-heading { margin-bottom: 0; }

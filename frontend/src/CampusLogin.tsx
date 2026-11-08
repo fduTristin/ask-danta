@@ -5,9 +5,10 @@ type Props = {
   loginSupported: boolean;
   credentialsPresent: boolean;
   onLoggedIn: () => Promise<void>;
+  onBusyChange?: (busy: boolean) => void;
 };
 
-export function CampusLogin({ enabled, loginSupported, credentialsPresent, onLoggedIn }: Props) {
+export function CampusLogin({ enabled, loginSupported, credentialsPresent, onLoggedIn, onBusyChange }: Props) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -24,6 +25,7 @@ export function CampusLogin({ enabled, loginSupported, credentialsPresent, onLog
     if (!email || !password) return;
     submitting.current = true;
     setBusy(true); setError(''); setSuccess('');
+    onBusyChange?.(true);
     // Clear the visible field immediately; credentials never enter chat state,
     // localStorage or sessionStorage. Only the login request contains them.
     (form.elements.namedItem('password') as HTMLInputElement).value = '';
@@ -45,7 +47,7 @@ export function CampusLogin({ enabled, loginSupported, credentialsPresent, onLog
       }
       form.reset();
       setOpen(false);
-      setSuccess('登录成功，凭据已保存在本机。对话可选择“公开网页 + 树洞”来搜索和读取帖子。');
+      setSuccess('已登录');
       await onLoggedIn();
     } catch (cause) {
       setError(cause instanceof Error && cause.name === 'Error'
@@ -53,26 +55,26 @@ export function CampusLogin({ enabled, loginSupported, credentialsPresent, onLog
     } finally {
       submitting.current = false;
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 
   return (
     <div className="campus-login">
       <div className="section-heading">
-        <p className="help">使用你的树洞账号登录，凭据仅保存在这台电脑。</p>
+        <div><strong>树洞</strong><small className="account-status">{credentialsPresent ? '已登录' : '未登录'}</small></div>
         <button className="text-button" type="button" disabled={!enabled || !loginSupported || busy}
           aria-expanded={open} aria-controls="campus-login-form"
           onClick={() => { setOpen(!open); setError(''); setSuccess(''); }}>
-          {open ? '收起登录' : credentialsPresent ? '重新登录树洞' : '登录树洞'}
+          {open ? '取消' : credentialsPresent ? '重新登录' : '登录树洞'}
         </button>
       </div>
       {enabled && !loginSupported && <p className="error" role="alert">当前连接的是旧版后端，尚不支持树洞登录。请重启项目的前后端服务，再点击“重新检查”。这不是账号或密码错误。</p>}
       {open && <form id="campus-login-form" onSubmit={login} autoComplete="off" aria-busy={busy}>
-        <p className="help" id="campus-login-help">邮箱和密码将经本机后端发送至树洞认证服务（auth.fduhole.com）。密码不会保存，也不会发送给模型。</p>
         <div className="login-fields">
-          <div><label htmlFor="campus-email">树洞邮箱</label><input id="campus-email" name="email" type="email" required maxLength={320} disabled={busy} aria-describedby="campus-login-help" /></div>
+          <div><label htmlFor="campus-email">树洞邮箱</label><input id="campus-email" name="email" type="email" autoComplete="username" required maxLength={320} disabled={busy} /></div>
           <div><label htmlFor="campus-password">树洞密码</label><input id="campus-password" name="password" type="password" required maxLength={1024} disabled={busy} /></div>
-          <button type="submit" disabled={busy || !enabled || !loginSupported}>{busy ? '正在登录…' : '登录并保存凭据'}</button>
+          <button type="submit" disabled={busy || !enabled || !loginSupported}>{busy ? '正在登录…' : '登录'}</button>
         </div>
       </form>}
       {error && <p className="error" role="alert">{error}</p>}

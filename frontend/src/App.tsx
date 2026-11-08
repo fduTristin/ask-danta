@@ -3,14 +3,14 @@ import { ArrowDown, ArrowUp, PanelLeft, Settings2, Square, SquarePen } from 'luc
 import { Answer } from './Answer';
 import { UserMessage } from './UserMessage';
 import { RunProgress } from './RunProgress';
-import { CampusLogin } from './CampusLogin';
+import { SettingsPanel } from './SettingsPanel';
 import { Modal } from './Modal';
 import { SourcePicker } from './SourcePicker';
 import { HistoryMenu } from './HistoryMenu';
 import { api, ApiError, errorText } from './api';
 import type { Health, Message, Progress, Session, SourceMode, Summary } from './api';
 
-type Action = { kind: 'rename' | 'delete' | 'clear' | 'switch'; target?: Summary; nextId?: string };
+type Action = { kind: 'rename' | 'delete' | 'switch'; target?: Summary; nextId?: string };
 type Run = { controller: AbortController; id?: string; done: Promise<void> };
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -38,6 +38,7 @@ export function App() {
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 760px)').matches);
   const [sidebar, setSidebar] = useState(() => !window.matchMedia('(max-width: 760px)').matches);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsCategory, setSettingsCategory] = useState<'account' | 'model'>('model');
   const [consent, setConsent] = useState(false);
   const [consentMode, setConsentMode] = useState<SourceMode>('all');
   const [action, setAction] = useState<Action | null>(null);
@@ -288,7 +289,7 @@ export function App() {
   }
   async function changeMode(next: SourceMode, consented = false) {
     if (activeBusy || actionLock.current) return;
-    if (next === 'all' && !campusReady) { setSettingsOpen(true); if (mobile) setSidebar(false); setInfo('登录树洞后，可在这里启用校内经验检索。'); return; }
+    if (next === 'all' && !campusReady) { setSettingsCategory('account'); setSettingsOpen(true); if (mobile) setSidebar(false); return; }
     if ((next === 'all' || next === 'auto' && campusReady) && !consented && !localStorage.getItem('danta-campus-consent')) { setConsentMode(next); setConsent(true); return; }
     actionLock.current = true; setWorking(true);
     try { if (sessionRef.current) install(await api<Session>(`/api/sessions/${sessionRef.current.session_id}`, 'PATCH', { source_preference: next })); setMode(next); setError(''); }
@@ -308,9 +309,7 @@ export function App() {
         if (sessionRef.current?.session_id === id) install(value);
       } else if (action.kind === 'delete') {
         await api(`/api/sessions/${id}`, 'DELETE'); drafts.current.delete(id);
-        if (sessionRef.current?.session_id === id) install(null, true);
-      } else {
-        install(await api<Session>(`/api/sessions/${id}/clear`, 'POST')); editInput(''); drafts.current.delete(id); setInfo('');
+        if (sessionRef.current?.session_id === id) { install(null, true); setFailedQuestion(''); }
       }
       await refreshList(); setAction(null); setMenu(undefined);
     } catch (cause) { setError(errorText(cause)); }
@@ -324,7 +323,7 @@ export function App() {
       <button className="history-title" aria-current={session?.session_id === item.session_id ? 'page' : undefined} title={item.title} onClick={() => navigate(item.session_id)} disabled={working}><span>{item.title}</span>{item.busy && <small aria-label="正在回答">…</small>}</button>
       <HistoryMenu title={item.title} open={menu === item.session_id} disabled={working} onOpenChange={open => setMenu(open ? item.session_id : undefined)} onAction={kind => beginAction(kind, item)} />
     </div>)}</nav>
-    <button className="settings-button" onClick={() => { setSettingsOpen(true); if (mobile) setSidebar(false); }}><Settings2 />设置</button>
+    <button className="settings-button" onClick={() => { setSettingsCategory('model'); setSettingsOpen(true); if (mobile) setSidebar(false); }}><Settings2 />设置</button>
   </>;
 
   return <div className={`app ${sidebar && !mobile ? '' : 'sidebar-closed'}`}>
@@ -348,7 +347,7 @@ export function App() {
         <div className="composer-region">
           {showLatest && hasConversation && <button className="back-latest" onClick={() => { nearBottom.current = true; bottom.current?.scrollIntoView({ block: 'end' }); setShowLatest(false); }}><ArrowDown />回到最新</button>}
           {(connectionError || health && health.stage < 6) && <div className="inline-error" role="alert">{connectionError || '请重启后端以启用新版历史会话功能。'}<button onClick={() => void load()} disabled={working || busy}>重新检查</button></div>}
-          {health && !health.model.configured && <p className="notice">配置模型密钥并重启服务后即可开始对话。</p>}
+          {health && !health.model.configured && <p className="notice">设置模型后即可开始对话。<button onClick={() => { setSettingsCategory('model'); setSettingsOpen(true); }}>配置模型</button></p>}
           {health?.search.is_mock && <p className="notice">当前搜索使用合成样例，不能作为实际办事依据。</p>}
           {error && !action && <div className="inline-error" role="alert">{error}{input.trim() && enabled && <button onClick={() => void send()} disabled={activeBusy || working}>重试</button>}<button onClick={() => void load()} disabled={busy || working}>重新检查</button></div>}
           {info && <p className="notice" role="status">{info}</p>}
@@ -357,17 +356,17 @@ export function App() {
             <textarea ref={textarea} rows={1} aria-label="你的问题或追问" placeholder="向旦挞提问…" maxLength={8000} value={input} disabled={activeBusy || working || !ready} onChange={event => editInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); void send(); } }} />
             {activeBusy ? <button type="button" className="send" aria-label="停止回答" title="停止回答" disabled={working} onClick={() => { setWorking(true); void stop().catch(cause => setError(errorText(cause))).finally(() => setWorking(false)); }}><Square /></button> : <button type="submit" className="send" aria-label="发送" title="发送（Enter）" disabled={!enabled || !ready || working || !input.trim()}><ArrowUp /></button>}
           </form>
-          {effectiveMode === 'all' && !campusReady && <p className="notice">树洞暂不可用，本轮将说明限制并使用网页。<button onClick={() => setSettingsOpen(true)}>重新登录</button></p>}
+          {effectiveMode === 'all' && !campusReady && <p className="notice">树洞暂不可用，本轮将说明限制并使用网页。<button onClick={() => { setSettingsCategory('account'); setSettingsOpen(true); }}>重新登录</button></p>}
         </div>
       </div>
     </main>
-    {settingsOpen && <Modal title="设置" close={() => setSettingsOpen(false)}><h3>树洞账号</h3><CampusLogin enabled={!!health} loginSupported={(health?.stage || 0) >= 3} credentialsPresent={!!health?.campus.credentials_present} onLoggedIn={refreshHealth} /><p className="help">启用树洞后，检索到的相关片段会交给模型用于回答。聊天记录与引用保存在本机。</p><div className="settings-history"><h3>当前对话</h3><p className="help">清空将删除本段对话的消息与引用，保留历史条目。</p><button className="danger" disabled={!session || activeBusy} onClick={() => { setSettingsOpen(false); setAction({ kind: 'clear' }); }}>清空当前对话</button></div></Modal>}
+    {settingsOpen && <SettingsPanel health={health} busy={activeBusy} initialCategory={settingsCategory} close={() => setSettingsOpen(false)} onSaved={refreshHealth} />}
     {consent && <Modal title="启用树洞检索" close={() => setConsent(false)}><p>允许把检索到的相关树洞片段发送给已配置的模型，用于回答你的问题。回答及必要引用片段会保存在本机聊天记录中。</p><div className="modal-actions"><button onClick={() => setConsent(false)}>取消</button><button className="primary" onClick={() => { localStorage.setItem('danta-campus-consent', '1'); setConsent(false); void changeMode(consentMode, true); }}>允许使用</button></div></Modal>}
-    {action && <Modal title={action.kind === 'rename' ? '重命名对话' : action.kind === 'delete' ? '删除对话' : action.kind === 'clear' ? '清空当前对话' : '停止并切换对话'} close={() => setAction(null)} locked={working}>
+    {action && <Modal title={action.kind === 'rename' ? '重命名对话' : action.kind === 'delete' ? '删除对话' : '停止并切换对话'} close={() => setAction(null)} locked={working}>
       <form onSubmit={event => { event.preventDefault(); void performAction(); }}>
         {action.kind === 'rename' ? <label>对话名称<input autoFocus value={rename} maxLength={80} required onChange={event => setRename(event.target.value)} /></label> : <p>{action.kind === 'switch' ? '切换会停止当前回答。已保存的消息和未发送的问题会留在原会话。' : '这段对话的消息与引用将从本机删除，操作无法撤销。'}</p>}
         {error && <p className="inline-error" role="alert">{error}</p>}
-        <div className="modal-actions"><button type="button" disabled={working} onClick={() => setAction(null)}>取消</button><button type="submit" className={action.kind === 'delete' || action.kind === 'clear' ? 'danger' : 'primary'} disabled={working || action.kind === 'rename' && !rename.trim()}>{working ? '处理中…' : action.kind === 'rename' ? '保存名称' : action.kind === 'switch' ? '停止并切换' : '确认删除'}</button></div>
+        <div className="modal-actions"><button type="button" disabled={working} onClick={() => setAction(null)}>取消</button><button type="submit" className={action.kind === 'delete' ? 'danger' : 'primary'} disabled={working || action.kind === 'rename' && !rename.trim()}>{working ? '处理中…' : action.kind === 'rename' ? '保存名称' : action.kind === 'switch' ? '停止并切换' : '确认删除'}</button></div>
       </form>
     </Modal>}
   </div>;

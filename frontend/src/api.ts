@@ -6,6 +6,15 @@ export type Message = { role: 'user' | 'assistant'; content: string; sources?: S
 export type Summary = { session_id: string; title: string; updated_at: string; busy: boolean; source_preference: SourceMode; interrupted: boolean };
 export type Session = Summary & { messages: Message[]; sources: Source[]; pending_question: string | null; progress?: Progress | null };
 export type Health = { stage: number; model: { configured: boolean }; search: { is_mock: boolean }; campus: { tools_enabled: boolean; credentials_present: boolean; auth_state: string } };
+export type RuntimeSettings = {
+  model_base_url: string; model_name: string; model_api_key_configured: boolean;
+  model_thinking: 'enabled' | 'disabled'; model_reasoning_effort: 'low' | 'high' | 'max';
+  model_max_tokens: number; model_timeout_seconds: number; answer_review_enabled: boolean;
+  search_provider: 'mock' | 'tavily'; search_api_key_configured: boolean;
+  search_depth: 'basic' | 'advanced'; search_max_results: number; search_max_snippet_chars: number;
+  search_timeout_seconds: number | null; http_timeout_seconds: number; campus_max_content_chars: number;
+  max_tool_calls: number; max_campus_pages: number; request_budget_seconds: number;
+};
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }

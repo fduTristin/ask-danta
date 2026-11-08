@@ -295,10 +295,11 @@ test('mobile drawer, login failure, safe Markdown and keyboard', async ({ page }
   await expect(page.getByRole('button', { name: '展开历史会话' })).toBeFocused();
   await page.getByRole('button', { name: '展开历史会话' }).click();
   await page.getByRole('button', { name: '设置', exact: true }).click();
+  await page.getByRole('button', { name: '账号', exact: true }).click();
   await page.getByRole('button', { name: '登录树洞', exact: true }).click();
   await page.getByLabel('树洞邮箱').fill('synthetic@example.org');
   await page.getByLabel('树洞密码').fill('wrong-synthetic-password');
-  await page.getByRole('button', { name: '登录并保存凭据' }).click();
+  await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByLabel('树洞密码')).toBeEmpty();
   await expect(page.locator('.campus-login .error')).toBeVisible();
   await page.getByRole('button', { name: '关闭设置', exact: true }).click();
@@ -401,18 +402,19 @@ test('an incomplete model answer can be resent', async ({ page }) => {
   await expect(page.getByRole('button', { name: '重新发送', exact: true })).toHaveCount(0);
 });
 
-test('clear persists and login success enables a consented data-source choice', async ({ page }) => {
-  await ask(page, '清空前的聊天');
+test('settings preserve conversation and login enables a consented data-source choice', async ({ page }) => {
+  await ask(page, '设置前的聊天');
   await page.getByRole('button', { name: '设置', exact: true }).click();
-  await page.getByRole('button', { name: '清空当前对话', exact: true }).click();
-  await page.getByRole('button', { name: '确认删除' }).click();
+  await expect(page.getByRole('button', { name: '清空当前对话', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '关闭设置', exact: true }).click();
   await page.reload();
-  await expect(page.locator('.assistant')).toHaveCount(0);
+  await expect(page.locator('.assistant')).toHaveCount(1);
   await page.getByRole('button', { name: '设置', exact: true }).click();
+  await page.getByRole('button', { name: '账号', exact: true }).click();
   await page.getByRole('button', { name: '登录树洞', exact: true }).click();
   await page.getByLabel('树洞邮箱').fill('synthetic@example.org');
   await page.getByLabel('树洞密码').fill('synthetic-password');
-  await page.getByRole('button', { name: '登录并保存凭据' }).click();
+  await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.locator('.login-success')).toBeVisible();
   await expect(page.getByLabel('树洞密码')).toHaveCount(0);
   await page.getByRole('button', { name: '关闭设置', exact: true }).click();
