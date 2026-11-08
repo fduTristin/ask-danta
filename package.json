@@ -20,12 +20,12 @@
     "appId": "io.github.fdutristin.askdanta",
     "productName": "Ask Danta",
     "directories": { "output": "release" },
-    "files": ["desktop/main.cjs", "package.json"],
+    "files": ["desktop/main.cjs", "desktop/icons/*", "package.json"],
     "extraResources": [{ "from": "dist/ask-danta-backend", "to": "backend" }],
     "artifactName": "Ask-Danta-${version}-${os}-${arch}.${ext}",
-    "win": { "target": ["nsis"] },
+    "win": { "target": ["nsis"], "icon": "desktop/icons/icon.ico" },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
-    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.education", "identity": "-" },
-    "linux": { "target": ["AppImage", "deb"], "category": "Education", "maintainer": "fduTristin" }
+    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.education", "identity": "-", "icon": "desktop/icons/icon.icns" },
+    "linux": { "target": ["AppImage", "deb"], "category": "Education", "maintainer": "fduTristin", "icon": "desktop/icons/icon.png" }
   }
 }

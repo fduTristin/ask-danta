@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, shell, session } = require('electron');
+const { app, BrowserWindow, dialog, Menu, shell, session } = require('electron');
 const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const path = require('node:path');
@@ -12,6 +12,7 @@ if (smoke) app.setPath('userData', require('node:fs').mkdtempSync(path.join(requ
 const token = randomBytes(32).toString('hex');
 
 async function start() {
+  Menu.setApplicationMenu(null);
   const root = path.join(__dirname, '..');
   const executable = app.isPackaged
     ? path.join(process.resourcesPath, 'backend', process.platform === 'win32' ? 'ask-danta-backend.exe' : 'ask-danta-backend')
@@ -53,7 +54,18 @@ async function start() {
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
   window = new BrowserWindow({ width: 1280, height: 850, minWidth: 760, minHeight: 560, show: !smoke,
+    icon: path.join(__dirname, 'icons', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+  });
+  // macOS normally routes editing accelerators through the application menu.
+  window.webContents.on('before-input-event', (event, input) => {
+    if (process.platform !== 'darwin' || input.type !== 'keyDown' || !input.meta || input.control || input.alt) return;
+    const key = input.key.toLowerCase();
+    const action = key === 'z' ? (input.shift ? 'redo' : 'undo')
+      : !input.shift ? ({ x: 'cut', c: 'copy', v: 'paste', a: 'selectAll' })[key] : undefined;
+    if (action) { event.preventDefault(); window.webContents[action](); }
+    else if (key === 'q') { event.preventDefault(); app.quit(); }
+    else if (key === 'w') { event.preventDefault(); window.close(); }
   });
   function external(url) {
     try { if (['https:', 'http:'].includes(new URL(url).protocol)) void shell.openExternal(url); } catch {}
@@ -64,6 +76,9 @@ async function start() {
   });
   await window.loadURL(origin);
   if (smoke) {
+    if (Menu.getApplicationMenu() !== null || (process.platform !== 'darwin' && window.isMenuBarVisible())) {
+      throw new Error('桌面菜单栏未移除。');
+    }
     const ok = await window.webContents.executeJavaScript(`fetch('/api/settings').then(r => r.ok && document.querySelector('#root').childElementCount > 0)`);
     if (!ok) throw new Error('桌面页面验证失败。');
     console.log('Desktop smoke passed');

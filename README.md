@@ -67,6 +67,8 @@ npm run desktop:dist
 
 安装包输出到 `release/`。`npm run desktop:pack` 只生成解包应用；`npm run desktop:dev` 构建前端后启动桌面窗口（修改前端后需重新运行，不提供桌面热更新）。详细构建、数据位置和 GitHub Release 操作见[桌面构建与发布](docs/desktop.md)。
 
+桌面应用使用项目内的 Danta 猫咪 logo，移除 Electron 默认的 File、Edit 等菜单栏，保留系统窗口标题栏与窗口控制按钮。
+
 ### 环境要求
 
 - Python 3.11 或更高版本。

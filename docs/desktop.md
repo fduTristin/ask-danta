@@ -45,8 +45,10 @@ git push origin v0.1.0
 
 ## 签名与发布资料
 
-当前配置未使用开发者证书签名，macOS 使用临时 ad-hoc 签名，应用使用 Electron 默认图标。Windows 可能出现未知发布者或 SmartScreen 提示，macOS 下载包可能被 Gatekeeper 拦截；面向公开用户正式分发前建议配置签名与 macOS 公证。本项目尚未接入自动更新。
+当前配置未使用开发者证书签名，macOS 使用临时 ad-hoc 签名。Windows 可能出现未知发布者或 SmartScreen 提示，macOS 下载包可能被 Gatekeeper 拦截；面向公开用户正式分发前建议配置签名与 macOS 公证。本项目尚未接入自动更新。
 
-应用名称暂定 Ask Danta，标识为 `io.github.fdutristin.askdanta`，版本为 `0.1.0`。若需正式品牌图标，请提供高分辨率方形图标；若需签名，请提供证书类型及 Apple Developer 团队信息，证书和密码应存入 GitHub Secrets，不要提交到仓库或发送到聊天。接入签名时须调整当前关闭签名的构建配置并配置相应 Secrets。
+应用名称暂定 Ask Danta，标识为 `io.github.fdutristin.askdanta`，版本为 `0.1.0`。应用图标使用 `frontend/public/danta-logo.webp`，转换后的 ICO、ICNS 和 PNG 保存在 `desktop/icons/` 并随源码提交，供本地与 Actions 构建使用。替换 logo 后运行 `uv run --with pillow==12.2.0 python scripts/build_icons.py` 重新生成图标。桌面启动时关闭 Electron 默认菜单；macOS 额外保留常用编辑、退出与关闭窗口快捷键。
+
+若需签名，请提供证书类型及 Apple Developer 团队信息，证书和密码应存入 GitHub Secrets，不要提交到仓库或发送到聊天。接入签名时须调整当前关闭签名的构建配置并配置相应 Secrets。
 
 安全配置参考 [Electron 安全指南](https://www.electronjs.org/docs/latest/tutorial/security)，运行器选择参考 [GitHub runner images](https://github.com/actions/runner-images)。
