@@ -91,8 +91,7 @@ export function Answer({ message, index, onRetry, disabled }: { message: Message
       table: ({ children }) => <div className="table-scroll"><table>{children}</table></div>,
     }}>{message.content}</ReactMarkdown></div>
     {message.end_reason === 'budget' && <p className="notice">本轮已达到处理时限，仍有未核实的信息。</p>}
-    {message.end_reason === 'error' && <p className="notice">本轮资料未完成核对，请结合下方提示继续确认。</p>}
-    {!!message.warnings?.length && <p className="notice">{[...new Set(message.warnings)].join(' ')}</p>}
+    {message.warnings?.some(warning => !message.content.includes(warning)) && <p className="notice">{[...new Set(message.warnings)].filter(warning => !message.content.includes(warning)).join(' ')}</p>}
     <div className="answer-actions"><button type="button" onClick={() => void copy()} aria-label={copied ? '已复制回答' : '复制回答'} title="复制回答">{copied ? <Check /> : <Copy />}<span>{copied ? '已复制' : '复制'}</span></button>
       {message.status === 'incomplete' && onRetry && <button type="button" disabled={disabled} onClick={onRetry}><RotateCcw />重新发送</button>}
       {!!sources.length && <button type="button" aria-expanded={open} aria-controls={`sources-${index}`} onClick={event => open ? closeSources() : showSources(undefined, event.currentTarget)}><Link />来源 {sources.length}</button>}</div>
