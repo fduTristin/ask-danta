@@ -407,12 +407,23 @@ test('copy and edit a user message into a new conversation', async ({ page, cont
   }
 });
 
-test('an incomplete model answer can be resent', async ({ page }) => {
+test('an incomplete model answer retries in place without creating a sidebar conversation', async ({ page, request }) => {
   await ask(page, '失败一次');
+  const before = (await (await request.get('/api/sessions')).json()).sessions;
+  expect(before).toHaveLength(1);
+  const original = before[0].session_id;
   await page.getByRole('button', { name: '重新发送', exact: true }).click();
   await expect(page.locator('.assistant')).toHaveCount(1);
   await expect(page.locator('.assistant')).toContainText('合成验收回答');
   await expect(page.getByRole('button', { name: '重新发送', exact: true })).toHaveCount(0);
+  const after = (await (await request.get('/api/sessions')).json()).sessions;
+  expect(after).toHaveLength(1);
+  expect(after[0].session_id).toBe(original);
+  const saved = await (await request.get(`/api/sessions/${original}`)).json();
+  expect(saved.messages).toHaveLength(2);
+  await page.reload();
+  await expect(page.locator('.assistant')).toContainText('合成验收回答');
+  await expect(page.locator('.user')).toHaveCount(1);
 });
 
 test('settings preserve conversation and login enables a consented data-source choice', async ({ page }) => {

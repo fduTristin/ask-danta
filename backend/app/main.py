@@ -234,6 +234,34 @@ def create_app(settings: Settings | None = None, transport=None, *, settings_fil
         app.state.sessions[branch.id] = branch
         return branch.public()
 
+    @app.post("/api/sessions/{session_id}/retry")
+    async def retry_conversation(session_id: UUID, body: SessionFork):
+        session = get_session(session_id)
+        ensure_idle(session)
+        if len(session.messages) != body.expected_message_count:
+            raise HTTPException(409, "对话已更新，请刷新后重新发送。")
+        index = body.message_index
+        if (index != len(session.messages) - 2 or session.messages[index]["role"] != "user"
+                or session.messages[-1]["role"] != "assistant"
+                or session.messages[-1].get("status") != "incomplete"):
+            raise HTTPException(422, "只能重新发送当前对话最后一轮未完成的问题。")
+        # Keep the session identity and metadata, but remove the failed turn's
+        # tool context. Persist a pending question before starting a new stream
+        # so an interrupted retry can be recovered without creating a branch.
+        prefix = fork_session(session, index)
+        changed = deepcopy(session)
+        changed.history = prefix.history
+        changed.web_history = prefix.web_history
+        changed.messages = prefix.messages
+        changed.sources = prefix.sources
+        changed.pending_question = session.messages[index]["content"]
+        changed.interrupted = True
+        changed.progress = None
+        changed.updated_at = datetime.now(timezone.utc).isoformat()
+        app.state.store.save(changed)
+        session.__dict__.update(changed.__dict__)
+        return session.public()
+
     @app.post("/api/sessions/{session_id}/clear")
     async def clear_session(session_id: UUID):
         session = get_session(session_id)

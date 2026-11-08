@@ -89,6 +89,7 @@
 | `GET /api/sessions/{session_id}` | 读取已完成的用户/助手消息、来源与忙碌状态 |
 | `PATCH /api/sessions/{session_id}` | 修改 `title`（1–80 字符）或 `source_preference`（`auto/web/all`） |
 | `POST /api/sessions/{session_id}/fork` | 以 `message_index` 指定用户消息位置，提供 `expected_message_count` 校验会话未变；创建只包含该消息之前上下文的新会话，保留原会话 |
+| `POST /api/sessions/{session_id}/retry` | 相同位置参数，只允许最后一轮未完成的问题；在原会话移除失败轮次及其工具上下文，持久化待重试问题，再由 `/chat` 发起重试；会话 ID、标题及此前内容不变，忙碌或消息数量变化返回 `409` |
 | `POST /api/sessions/{session_id}/clear` | 清空历史、用户条件与检索来源，保留会话 ID |
 | `DELETE /api/sessions/{session_id}` | 删除会话 |
 | `POST /api/sessions/{session_id}/cancel` | 主动取消当前回答，返回 202；读取会话确认 `busy=false` 后可切换或删除 |

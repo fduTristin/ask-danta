@@ -258,7 +258,7 @@ export function App() {
       await refreshList().catch(() => {}); void refreshHealth();
     }
   }
-  async function send(text = inputRef.current, editIndex?: number) {
+  async function send(text = inputRef.current, editIndex?: number, intent: 'edit' | 'retry' = 'edit') {
     const question = text.trim();
     if (run.current || actionLock.current || activeBusy || !ready || !enabled || !question) return;
     // Reconcile with the server before sending, especially after a lost final event.
@@ -278,9 +278,9 @@ export function App() {
       if (effectiveMode === 'all' && !localStorage.getItem('danta-campus-consent')) { setConsentMode(mode); setConsent(true); return; }
       if (editIndex !== undefined && sessionRef.current) {
         const original = sessionRef.current;
-        const branch = await api<Session>(`/api/sessions/${original.session_id}/fork`, 'POST', { message_index: editIndex, expected_message_count: original.messages.length });
-        drafts.current.set(original.session_id, inputRef.current);
-        install(branch); editInput(question);
+        const target = await api<Session>(`/api/sessions/${original.session_id}/${intent === 'retry' ? 'retry' : 'fork'}`, 'POST', { message_index: editIndex, expected_message_count: original.messages.length });
+        if (intent === 'edit') drafts.current.set(original.session_id, inputRef.current);
+        install(target); editInput(question);
       }
       setFailedQuestion(''); setProgress(null); setBusy(true); setPendingQuestion(question); nearBottom.current = true;
       const currentRun: Run = { controller: new AbortController(), id: sessionRef.current?.session_id, done: Promise.resolve() };
@@ -337,7 +337,7 @@ export function App() {
         <div className="messages-scroll" ref={scroll} onScroll={() => { const node = scroll.current!; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; setShowLatest(!nearBottom.current); }}>
           <div className="messages" aria-label="对话内容">
             {!hasConversation && <div className="welcome"><img src="/danta-logo.webp" alt="" /><h1>今天，有什么校园问题？</h1></div>}
-            {messages.map((message, index) => message.role === 'user' ? <UserMessage key={`${session?.session_id}-${index}`} content={message.content} disabled={activeBusy || working || !enabled || !ready} onSend={text => void send(text, index)} /> : <Answer key={`${session?.session_id}-${index}`} message={message} index={index} disabled={activeBusy || working || !enabled || !ready} onRetry={index > 0 && messages[index - 1].role === 'user' ? () => void send(messages[index - 1].content, index - 1) : undefined} />)}
+            {messages.map((message, index) => message.role === 'user' ? <UserMessage key={`${session?.session_id}-${index}`} content={message.content} disabled={activeBusy || working || !enabled || !ready} onSend={text => void send(text, index)} /> : <Answer key={`${session?.session_id}-${index}`} message={message} index={index} disabled={activeBusy || working || !enabled || !ready} onRetry={index === messages.length - 1 && index > 0 && messages[index - 1].role === 'user' ? () => void send(messages[index - 1].content, index - 1, 'retry') : undefined} />)}
             {(pendingQuestion || activeBusy && session?.pending_question) && <article className="message user pending"><p>{pendingQuestion || session?.pending_question}</p></article>}
             {!activeBusy && retryQuestion && <UserMessage key={`${session?.session_id}-retry-${retryQuestion}`} content={retryQuestion} failed disabled={working || !enabled || !ready} onSend={text => void send(text)} />}
             {activeBusy && <RunProgress key={session?.session_id || 'new'} progress={busy ? progress : session?.progress} active />}
