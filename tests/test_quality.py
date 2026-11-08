@@ -135,9 +135,12 @@ def test_thinking_protocol_usage_and_independent_timeouts():
             return search_result()
         n += 1
         body = json.loads(request.content)
-        assert body["thinking"]["type"] == "enabled"
+        assert body["thinking"]["type"] == ("enabled" if n <= 2 else "disabled")
         assert body["max_tokens"] == 6000
-        assert body["reasoning_effort"] == "low"
+        if n <= 2:
+            assert body["reasoning_effort"] == "low"
+        else:
+            assert "reasoning_effort" not in body
         assert request.extensions["timeout"]["read"] == 35
         response = completion(None, [call()]) if n == 1 else completion("窗口 [W1]" if n == 2 else '{"corrections": []}')
         payload = json.loads(response.content)

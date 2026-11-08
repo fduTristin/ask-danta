@@ -97,7 +97,7 @@ export function SettingsPanel({ health, busy, initialCategory = 'model', close, 
                 {numberField('search_max_results', '每次搜索结果数', 1, 10)}
               </div>}
               {category === 'advanced' && <div className="settings-fields">
-                <label className="setting-row"><span>答案核对<small>生成后核对证据，可能增加等待时间。</small></span><input type="checkbox" checked={draft.answer_review_enabled} onChange={event => update('answer_review_enabled', event.target.checked)} /></label>
+                <label className="setting-row"><span>答案核对<small>使用快速模式核对证据与引用。</small></span><input type="checkbox" checked={draft.answer_review_enabled} onChange={event => update('answer_review_enabled', event.target.checked)} /></label>
                 {numberField('model_timeout_seconds', '模型超时（秒）', 0.1, 300)}
                 {numberField('request_budget_seconds', '单轮总时限（秒）', 0.1, 600)}
                 {numberField('http_timeout_seconds', '通用请求超时（秒）', 0.1, 120)}

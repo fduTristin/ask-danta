@@ -41,7 +41,8 @@ def test_review_truncation_retries_once_without_publishing_unchecked_content(rec
         final = result[-1]
         metrics = final['metrics']
         assert len(requests) == 4
-        assert requests[2]['thinking']['type'] == 'enabled'
+        assert requests[0]['thinking']['type'] == requests[1]['thinking']['type'] == 'enabled'
+        assert requests[2]['thinking']['type'] == 'disabled'
         assert requests[3]['thinking']['type'] == 'disabled'
         assert 'reasoning_effort' not in requests[3]
         assert requests[3]['max_tokens'] == requests[2]['max_tokens'] == 4096
@@ -50,6 +51,8 @@ def test_review_truncation_retries_once_without_publishing_unchecked_content(rec
         assert metrics['review_calls'] == 2
         assert metrics['completion_tokens'] == 4096 * (1 if recovered else 2)
         assert metrics['usage_reported_calls'] == (1 if recovered else 2)
+        assert metrics['review_completion_tokens'] == metrics['completion_tokens']
+        assert 0 <= metrics['review_seconds'] <= metrics['model_seconds']
         assert any(event['type'] == 'review_retry' for event in result)
         assert 'private-reasoning' not in json.dumps(result)
         if recovered:

@@ -156,6 +156,7 @@ class Agent:
                    "usage_reported_calls": 0, "cache_usage_reported_calls": 0,
                    "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 0,
                    "review_calls": 0, "answer_repairs": 0, "model_seconds": 0.0, "tool_seconds": 0.0,
+                   "review_seconds": 0.0, "review_prompt_tokens": 0, "review_completion_tokens": 0,
                    "blocked_tool_calls": 0}
         system = {"role": "system", "content": SYSTEM + "\n当前日期：" + datetime.now(timezone(timedelta(hours=8))).date().isoformat()
                   + "\n本轮数据源权限：" + ("公开网页与树洞只读工具。" if campus_allowed else "仅公开网页；不得调用树洞工具或引用此前树洞资料。")
@@ -206,6 +207,9 @@ class Agent:
         def record_usage(usage):
             for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
                 metrics[key] += usage.get(key, 0)
+            if model_phase == "review":
+                metrics["review_prompt_tokens"] += usage.get("prompt_tokens", 0)
+                metrics["review_completion_tokens"] += usage.get("completion_tokens", 0)
             if all(key in usage for key in ("prompt_tokens", "completion_tokens", "total_tokens")):
                 metrics["usage_reported_calls"] += 1
             cache_keys = ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens")
@@ -226,7 +230,10 @@ class Agent:
                 record_usage(exc.usage)
                 raise
             finally:
-                metrics["model_seconds"] += time.monotonic() - call_started
+                elapsed = time.monotonic() - call_started
+                metrics["model_seconds"] += elapsed
+                if model_phase == "review":
+                    metrics["review_seconds"] += elapsed
             record_usage(message.usage)
             return message
 
@@ -257,7 +264,6 @@ class Agent:
                     corrections = []
                     fact_checks = []
                     audit_format_error = None
-                    retry_without_thinking = False
                     while not message.tool_calls and review_calls < MAX_REVIEW_CALLS:
                         issues = publication_issues(message.content or "")
                         if not needs_review and not issues and not corrections:
@@ -285,7 +291,9 @@ class Agent:
                         payload['required_actions'] = sorted(required_actions)
                         payload['missing_actions'] = sorted(missing_actions())
                         payload['retrieval_forbidden'] = no_retrieval
-                        payload['fact_checks'] = fact_checks
+                        # The exact evidence is already included under its source
+                        # ID. Avoid repeating up to 1,600 characters per fact.
+                        payload['fact_checks'] = [{key: value for key, value in fact.items() if key != 'quote'} for fact in fact_checks]
                         if not needs_review:
                             referenced = citation_ids(message.content or '')
                             referenced.update(fact['source_id'] for fact in fact_checks)
@@ -295,8 +303,8 @@ class Agent:
                         try:
                             checked = await complete([
                                 {"role": "system", "content": AUDIT if needs_review else REVIEW},
-                                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-                            ], review_tools, nonthinking=retry_without_thinking)
+                                {"role": "user", "content": json.dumps(payload, ensure_ascii=False, separators=(',', ':'))},
+                            ], review_tools, nonthinking=True)
                         except ModelError as exc:
                             recoverable = exc.code in {"model_output_truncated", "model_empty_response", "model_invalid_response", "model_interrupted"}
                             if not recoverable or review_response_retries or review_calls >= MAX_REVIEW_CALLS or time.monotonic() >= deadline - min(5, self.settings.model_timeout_seconds):
@@ -306,13 +314,10 @@ class Agent:
                             metrics["review_response_error"] = exc.code
                             if exc.finish_reason:
                                 metrics["review_response_finish_reason"] = exc.finish_reason
-                            # Retry the same unpublished draft once. Disable
-                            # thinking only for recovery, without increasing the
-                            # user's token limit or the shared time/call budgets.
-                            retry_without_thinking = True
+                            # Retry the same unpublished draft once, retaining
+                            # fast review mode and the shared time/call budgets.
                             yield {"type": "review_retry"}
                             continue
-                        retry_without_thinking = False
                         if not review_tools and checked.tool_calls:
                             raise ModelError("model_ignored_review", "模型未按最终核对要求结束工具调用。")
                         if checked.tool_calls:
@@ -510,7 +515,7 @@ class Agent:
             cited = citation_ids(answer)
             metrics.update(elapsed_seconds=round(time.monotonic() - started, 3), tool_calls=calls,
                            campus_pages=campus_budget.pages, budget_reasons=budget_reasons)
-            for key in ("model_seconds", "tool_seconds"):
+            for key in ("model_seconds", "tool_seconds", "review_seconds"):
                 metrics[key] = round(metrics[key], 3)
             assistant = {"role": "assistant", "content": answer,
                          "sources": [s for s in sources if s["id"] in cited and not s["is_mock"]],

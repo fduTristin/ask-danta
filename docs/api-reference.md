@@ -13,7 +13,7 @@
 | `model_reasoning_effort` | `low` | 开启思考时使用：`low` / `high` / `max` |
 | `model_max_tokens` | `16384` | 模型输出上限，256–32768 |
 | `model_timeout_seconds` | `120` | 单次模型请求的 HTTP 超时及整体截止时间 |
-| `answer_review_enabled` | `true` | 使用独立证据核对断言，再按具体问题修订；每轮最多 4 次核对/改写，共享原总时长。关闭只跳过常规语义核对，引用和显式字数校验仍保留 |
+| `answer_review_enabled` | `true` | 使用非思考模式独立核对证据并修订；每轮最多 4 次核对/改写，共享总时限。主回答仍遵守用户思考设置。关闭只跳过常规语义核对，引用和显式字数校验仍保留 |
 | `search_provider` | `mock` | `mock` 为离线样例；`tavily` 为真实搜索 |
 | `search_api_key` | 空 | Tavily API Key |
 | `search_max_results` | `5` | 单次最多 1–10 条结果 |
@@ -77,6 +77,8 @@
 ```
 
 ## 会话与事件流
+
+`metrics.review_seconds` 统计核对与改写的模型请求耗时，`review_prompt_tokens`／`review_completion_tokens` 统计这些请求报告的用量（包含失败响应中可用的统计）；它们是总模型统计的子集，不应重复计入总用量。
 
 模型适配器区分 `model_output_truncated`、`model_empty_response`、`model_content_filtered`、`model_interrupted` 与 `model_invalid_response`。失败轮次的 `metrics` 保存 `error_stage` 以及上游提供的合法 `error_finish_reason`；失败响应中可用的 Token 用量也计入统计，不保存原始响应或内部思考。核对阶段允许一次受现有预算约束的响应恢复，发出 `review_retry` 事件；其进度记录将前一次核对标为失败，再显示重试步骤。认证、限流等错误不会自动重试。
 
