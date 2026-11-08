@@ -58,7 +58,7 @@ def create_app(settings: Settings | None = None, transport=None, *, settings_fil
                 app.state.sessions.clear()
                 app.state.store.close()
 
-    app = FastAPI(title="Ask Danta", version="0.6.0", lifespan=lifespan)
+    app = FastAPI(title="Ask Danta", version="1.0.0", lifespan=lifespan)
 
     @app.exception_handler(SettingsStorageError)
     async def settings_storage_error(request: Request, exc: SettingsStorageError):

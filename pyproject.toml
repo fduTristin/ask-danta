@@ -1,6 +1,6 @@
 [project]
 name = "ask-danta"
-version = "0.1.1"
+version = "1.0.0"
 description = "Local campus research assistant"
 requires-python = ">=3.11"
 dependencies = [

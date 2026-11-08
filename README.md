@@ -6,6 +6,8 @@ Ask Danta 结合公开网页与经授权访问的旦挞茶楼（树洞）资料�
 
 本项目为独立开发的衍生应用，采用单用户本地运行方式。
 
+完整功能与安装包说明见 [1.0.0 中英文发布概览](docs/releases/v1.0.0.md)。
+
 ## 项目演示
 
 [![Ask Danta 产品演示](docs/media/ask-danta-preview.gif)](docs/media/ask-danta-demo.mp4)

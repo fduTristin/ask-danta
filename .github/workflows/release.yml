@@ -73,6 +73,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: desktop-*
@@ -86,6 +87,11 @@ jobs:
         shell: bash
         run: |
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --draft --verify-tag --title "Ask Danta $TAG" --generate-notes
+            notes="docs/releases/$TAG.md"
+            if [ -f "$notes" ]; then
+              gh release create "$TAG" --draft --verify-tag --title "Ask Danta $TAG" --notes-file "$notes"
+            else
+              gh release create "$TAG" --draft --verify-tag --title "Ask Danta $TAG" --generate-notes
+            fi
           fi
           gh release upload "$TAG" installers/* --clobber
