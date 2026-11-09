@@ -2,7 +2,7 @@
 
 Ask Danta 是面向复旦大学校园场景的检索问答应用，支持公开网页检索与树洞资料检索，为校园办事、课程学习和校园生活问题提供带来源引用的回答。应用在本机运行，支持多轮追问和本地会话管理。
 
-[下载安装包](https://github.com/fduTristin/ask-danta/releases/latest) · [1.0.0 发布说明](docs/releases/v1.0.0.md) · [问题反馈](https://github.com/fduTristin/ask-danta/issues)
+[下载安装包](https://github.com/fduTristin/ask-danta/releases/latest) · [1.0.1 发布说明](docs/releases/v1.0.1.md) · [问题反馈](https://github.com/fduTristin/ask-danta/issues)
 
 ## 开始使用
 

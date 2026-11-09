@@ -39,8 +39,8 @@ Python 后端须在目标系统和目标架构上构建。不要在 Windows 构�
 
 ```sh
 git push origin HEAD
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
 发布后不要移动标签。后续版本先更新根目录版本与 npm 锁文件、提交，再推送新标签。手动构建不创建 Release。构建任务只有读取权限，Release 任务单独授予 `contents: write`；仓库或组织设置必须允许 Actions 运行及该权限。
@@ -49,7 +49,7 @@ git push origin v1.0.0
 
 当前配置未使用开发者证书签名，macOS 使用临时 ad-hoc 签名。Windows 可能出现未知发布者或 SmartScreen 提示，macOS 下载包可能被 Gatekeeper 拦截；面向公开用户正式分发前建议配置签名与 macOS 公证。本项目尚未接入自动更新。
 
-应用名称暂定 Ask Danta，标识为 `io.github.fdutristin.askdanta`，版本为 `1.0.0`。应用图标使用 `frontend/public/danta-logo.webp`，转换后的 ICO、ICNS 和 PNG 保存在 `desktop/icons/` 并随源码提交，供本地与 Actions 构建使用。替换 logo 后运行 `uv run --with pillow==12.2.0 python scripts/build_icons.py` 重新生成图标。桌面启动时关闭 Electron 默认菜单；macOS 额外保留常用编辑、退出与关闭窗口快捷键。
+应用名称暂定 Ask Danta，标识为 `io.github.fdutristin.askdanta`，版本为 `1.0.1`。应用图标使用 `frontend/public/danta-logo.webp`，转换后的 ICO、ICNS 和 PNG 保存在 `desktop/icons/` 并随源码提交，供本地与 Actions 构建使用。替换 logo 后运行 `uv run --with pillow==12.2.0 python scripts/build_icons.py` 重新生成图标。桌面启动时关闭 Electron 默认菜单；macOS 额外保留常用编辑、退出与关闭窗口快捷键。
 
 若需签名，请提供证书类型及 Apple Developer 团队信息，证书和密码应存入 GitHub Secrets，不要提交到仓库或发送到聊天。接入签名时须调整当前关闭签名的构建配置并配置相应 Secrets。
 
