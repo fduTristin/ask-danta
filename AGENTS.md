@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+Keep this file entirely in English, including headings, examples, and future additions. This does not change the language requirements for product UI, documentation, or release notes.
+
 ## Project Structure & Module Organization
 
 - `backend/app/`: FastAPI application factory (`main.py`), configuration schema (`config.py`), private persisted settings (`runtime_settings.py`), web adapters, and read-only campus API/authentication (`campus.py`, `campus_auth.py`).
@@ -25,8 +27,8 @@ Use Python 3.11+, uv, and Node.js 22.12+ with npm. Run from the repository root:
 
 ## UI Design and Local Release
 
-- UI 设计优先参考 ChatGPT 网页端和桌面端的布局、交互与视觉层级，并保留本项目的品牌与中文文案。
-- 每次完成新改动后，必须在本地执行 `npm run desktop:dist`，将构建产物输出到 `release/`。如已有文件被运行中的应用占用，可使用 `release/` 下的独立子目录；交付时说明实际路径与验证结果。
+- Use the ChatGPT web and desktop interfaces as the primary references for layout, interaction, and visual hierarchy, while retaining this project's branding and Chinese UI copy.
+- After each completed change, run `npm run desktop:dist` locally and write build artifacts to `release/`. If a running application locks existing files, use a separate subdirectory under `release/`. Report the actual output path and validation results when delivering the change.
 
 ## Coding Style & Naming Conventions
 
@@ -34,42 +36,42 @@ Use four-space Python indentation, `snake_case` functions/modules, and `PascalCa
 
 Use two-space TypeScript indentation, single-quoted strings, semicolons, `PascalCase` components/types, and `camelCase` functions/state. Preserve Chinese UI copy. No formatter or linter is configured; follow surrounding code and avoid unrelated reformatting.
 
-## 中文文档与叙述规范
+## Chinese Documentation and Copywriting
 
-适用于 README、项目文档、中文 PR 描述、发版说明、界面说明和演示文案。默认使用正式、直接、自然的现代汉语；提交信息仍遵循下方的英文约定。用户明确指定文体时，以用户要求为准。
+These rules apply to the README, project documentation, Chinese PR descriptions, release notes, UI explanations, and demo copy. Use formal, direct, natural modern Chinese by default; commit messages follow the English convention below. Explicit user requests take precedence over the default writing style.
 
-### 内容与语气
+### Content and Tone
 
-- 先说明项目用途、实际行为或操作结果，再补充必要的条件与限制。使用具体名词和动词，避免形容词堆砌、官样表达和聊天式开场。
-- 每句话应提供信息。删除没有实际含义的口号、夸赞、铺垫和重复总结，不用“赋能”“极致体验”“一站式解决”等词代替功能说明。不添加“值得注意的是”“综上所述”等无必要的过渡语。
-- 直接陈述事实，不为抬高语气编造“不是 X，而是 Y”“不仅……更……”式对比。真实的差异、否定和限制必须保留；这些句式不是机械禁用词。
-- 保留原文的条件、范围、归因和确定程度。区分已实现、计划中、模拟演示和实际验证，不把“支持来源引用”写成“保证回答准确”。不得为了让文案具体而虚构数据、用户评价、性能结论或个人经历。
-- 正式不等于冗长，自然不等于口语化。不强加感叹、反问、俏皮话或人格化描述，也不为追求短句破坏句意与段落衔接。
+- Lead with the project's purpose, actual behavior, or operation result, then provide necessary conditions and limitations. Use concrete nouns and verbs; avoid stacked adjectives, bureaucratic language, and conversational openings.
+- Make every sentence informative. Remove empty slogans, praise, padding, and repetitive summaries. Do not substitute phrases such as "empower," "ultimate experience," or "one-stop solution" for feature descriptions. Avoid unnecessary transitions such as "it is worth noting" or "in conclusion."
+- State facts directly. Do not invent contrasts such as "not X, but Y" or "not only ... but also ..." to elevate the tone. Preserve real distinctions, negations, and limitations; these constructions are not mechanically banned.
+- Preserve conditions, scope, attribution, and certainty. Distinguish implemented features, plans, simulated demos, and actual validation. Do not turn "supports source citations" into "guarantees accurate answers." Never invent data, testimonials, performance conclusions, or personal experiences to make copy more concrete.
+- Formal writing need not be verbose, and natural writing need not be colloquial. Do not force exclamations, rhetorical questions, jokes, or personification. Do not sacrifice meaning or paragraph flow merely to shorten sentences.
 
-### 文档组织与排版
+### Structure and Formatting
 
-- README 面向首次接触项目的读者，说明用途、主要功能、部署配置、使用边界及必要的开发入口。不要写成宣传稿、对话回复或开发流水账；阶段进展和验证记录放在 `plan.md`，详细专题另设文档并链接。
-- 标题直接标明内容，例如“部署与配置”“数据管理与使用边界”。正文以连贯段落为主；并列信息使用列表，操作步骤使用编号，参数或方案对比使用表格。不为形式整齐强凑三点、拆分小标题或添加重复总结。
-- 中文正文使用中文标点，中文与英文、阿拉伯数字之间留一个半角空格，英文或数字与中文标点之间不留空格。保留专有名词的官方拼写，术语在全文中保持一致。
-- 命令、标识符、路径、URL 和配置值保持原样，不因文字润色改变大小写、引号或空格。修改标题后检查相关锚点；链接文字说明目标内容，避免“点击这里”。
+- Write the README for first-time readers: explain purpose, main features, deployment and configuration, usage boundaries, and essential development entry points. Avoid promotional copy, conversational replies, and development diaries. Put milestone progress and verification records in `plan.md`; link to separate documents for detailed topics.
+- Use descriptive headings such as "Deployment and Configuration" or "Data Management and Usage Boundaries." Prefer connected paragraphs, lists for parallel information, numbered steps for procedures, and tables for parameter or option comparisons. Do not force three-point lists, excessive subheadings, or repeated summaries for visual symmetry.
+- Use Chinese punctuation in Chinese prose. Insert one ASCII space between Chinese text and English words or Arabic numerals, but no space between English words or numerals and Chinese punctuation. Preserve official spellings of proper names and use terminology consistently.
+- Preserve commands, identifiers, paths, URLs, and configuration values exactly. Do not change case, quotes, or spacing while polishing prose. Check affected anchors after renaming headings; use descriptive link labels instead of "click here."
 
-### 演示与宣传素材
+### Demos and Promotional Materials
 
-- 默认以实际界面和操作过程展示产品。片头片尾可保留项目名称与标识；未经用户明确要求，不添加宣传口号、旁白、解释性字幕或号召使用的结尾。
-- 保留界面自身必要的状态和数据标识。演示数据的性质及使用限制在 README 的演示说明中交代，不额外叠加重复的宣传文字。
-- 文案需要补充时，只描述画面中可观察到的功能，不替用户评价体验，不加入“每一步，都看得见”等抽象表述。
+- Show the product through its actual interface and operation by default. Opening and closing frames may retain the project name and logo. Unless explicitly requested, do not add slogans, voiceovers, explanatory captions, or closing calls to action.
+- Preserve necessary status and data labels within the interface. Explain the nature and limitations of demo data in the README's demo description; do not overlay repetitive promotional text.
+- When additional copy is needed, describe only features observable on screen. Do not evaluate the experience on the user's behalf or add abstract claims such as "Every step is visible."
 
-以下示例仅在对应功能确已实现时使用：
+The following examples illustrate the intended style; use the suggested wording only when the corresponding feature is implemented:
 
-| 避免的表达 | 建议表达 |
+| Avoid | Prefer |
 | --- | --- |
-| 校园里的问题，有据可查。 | 支持公开网页与树洞检索，并提供来源引用。 |
-| 每一步，都看得见。 | 界面显示工具调用状态与耗时。 |
-| 轻松开启你的智能校园探索之旅。 | 运行 `python scripts/dev.py` 启动服务。 |
+| Campus questions, backed by evidence. | Search public web pages and campus posts with source citations. |
+| Every step is visible. | The interface displays tool status and elapsed time. |
+| Effortlessly begin your intelligent campus journey. | Run `python scripts/dev.py` to start the services. |
 
-提交前核对事实、命令、默认值、路径和链接，删除重复信息，确认没有因润色扩大功能承诺。纯文档措辞修改不要求运行应用测试；涉及操作说明时，应核对相应实现或验证命令。
+Before committing, check facts, commands, defaults, paths, and links. Remove repetition and ensure editing has not expanded feature promises. Wording-only documentation changes do not require application tests. For operational instructions, verify the corresponding implementation or commands.
 
-参考资料：[Humanizer-zh](https://github.com/op7418/Humanizer-zh/blob/main/SKILL.md)（中文润色 skill）与[中文技术文档的写作规范](https://github.com/ruanyf/document-style-guide)（写作指南）。仅参考适合本项目的表达与排版建议，不自动安装外部 skill，不照搬固定句长或改写模板；本节以项目实际需求和用户要求为准。
+References: [Humanizer-zh](https://github.com/op7418/Humanizer-zh/blob/main/SKILL.md), a Chinese editing skill, and [Chinese Technical Documentation Style Guide](https://github.com/ruanyf/document-style-guide). Apply only guidance relevant to this project. Do not automatically install external skills or copy fixed sentence lengths or rewriting templates. Actual project requirements and user instructions take precedence.
 
 ## Testing Guidelines
 
@@ -94,29 +96,29 @@ Write commit messages in English using this format:
 
 ### Pull Requests
 
-PR 描述面向未参与开发过程的审阅者，解释本次代码差异；Release 面向使用该版本的用户，解释可用功能、安装与升级。两者分别编写，不直接复制提交列表或聊天记录。
+Write PR descriptions for reviewers who did not participate in development, explaining the current diff. Write release notes for users of that version, explaining available features, installation, and upgrades. Author them separately; do not paste commit lists or chat transcripts into either.
 
-- 标题概括最终改动及其作用；正文先写具体问题与改动后的行为。需要时用触发条件、改动前后示例帮助理解，避免“优化体验”“完善功能”等无法核验的概括。
-- 按改动复杂度说明范围、必要的实现理由、验证结果及实际限制。简单修改可以只写一两段与验证说明，不强套固定章节；复杂修改再按内容分节。
-- 只写帮助审阅的技术细节。删除开发流水账、已放弃方案和与最终差异无关的修复过程；确实影响设计取舍时才解释历史原因。范围变化后同步更新标题和正文。
-- 验证说明列出实际执行的检查及结果，区分自动化测试、模拟响应、真实服务联调和人工验证。不将构建通过写成完整功能验收；未验证的重要部分如实说明原因。
-- 关联确实相关的 Issue 或计划条目；界面改动附脱敏截图。涉及破坏性变更时说明受影响用户与迁移方法。没有对应 Issue、测试结果或性能数据时不得编造。
+- Summarize the final change and its purpose in the title. Lead the body with the concrete problem and resulting behavior. Use triggers or before-and-after examples when helpful; avoid unverifiable summaries such as "improve the experience" or "enhance functionality."
+- Scale the explanation of scope, implementation rationale, validation, and limitations to the change. Simple changes may need only one or two paragraphs and validation details. Use sections for complex changes without forcing a fixed template.
+- Include only technical details that help review. Omit development diaries, abandoned approaches, and repair history unrelated to the final diff; include history only when it explains a meaningful tradeoff. Update the title and body when scope changes.
+- Report checks actually performed and their results. Distinguish automated tests, mocked responses, live-service integration, and manual validation. Do not present a successful build as comprehensive functional acceptance. Explain any material validation gaps accurately.
+- Link relevant issues or plan items, and include sanitized screenshots for UI changes. Explain affected users and migration steps for breaking changes. Never invent issues, test results, or performance measurements.
 
 ### Release Notes
 
-- 发布说明以对应标签与实际分发的安装包为准，不将当前工作区、主分支或计划中的功能写成已发布。首次发布介绍主要能力，后续版本突出相对上一版的变化与用户影响；不把项目建立以来的所有提交展开成清单。
-- 建议按“版本简介—下载与使用条件—主要功能或变更—升级说明与已知限制—文档与反馈入口”组织，按版本实际需要取舍。把模型密钥、搜索服务、账号权限及可能产生费用等影响使用的条件放在功能长列表之前。
-- 下载链接核对实际资产名称、版本、系统和架构；已发布版本给出对应版本的链接，不使用可能跳转到其他版本的 `latest` 代替。安装与源码构建入口分开，普通用户无需先阅读构建流程。
-- 功能描述采用用户能观察到的行为。协议字段、内部重试预算、进程等待时间等细节放入开发文档；没有用户影响的样式微调不作为首次发版亮点。确有用户影响的修复可简述触发条件与修复结果。
-- 保留实际适用的数据流向、服务依赖、签名状态、升级迁移和功能限制。避免将“本地运行”写成“离线运行”，或将“引用与核对”写成准确性保证；密钥存储方式、文件权限和接口不返回原文应分别准确说明。
-- 中英文版本的功能范围、前提、确定程度、下载链接与限制保持一致。允许自然翻译，不在翻译中新增承诺；长篇实现说明通过文档链接提供，不在双语正文中重复堆叠。
-- 仓库发布说明保存在 `docs/releases/<tag>.md`。需要同步 GitHub Release 时核对线上正文；修改本地文件不代表线上已更新。仅修改文案时不重建标签、不替换线上安装包；交付时明确本地提交、远程推送和线上发布页各自的状态。
+- Describe the corresponding tag and distributed packages. Do not present working-tree, main-branch, or planned features as released. Introduce core capabilities in an initial release; emphasize changes since the previous version and their user impact in subsequent releases. Do not expand the entire commit history into a feature list.
+- A useful order is version overview, downloads and prerequisites, main features or changes, upgrade guidance and known limitations, then documentation and feedback links. Adapt it to the release. Put prerequisites such as model keys, search services, account permissions, and potential costs before long feature lists.
+- Verify download links against actual asset names, versions, operating systems, and architectures. Use version-specific links in published release notes instead of `latest`, which may point to another version. Separate installation from source-build instructions so ordinary users need not read build procedures first.
+- Describe observable user behavior. Move protocol fields, internal retry budgets, process timeouts, and similar details to developer documentation. Do not promote minor styling adjustments without user impact as initial-release highlights. For meaningful fixes, briefly describe the trigger and outcome.
+- Retain applicable information about data flows, service dependencies, signing, upgrade migration, and feature limitations. Do not equate local execution with offline operation or citations and review with guaranteed accuracy. Describe key storage, file permissions, and omission of secrets from API responses separately and precisely.
+- Keep Chinese and English versions consistent in feature scope, prerequisites, certainty, download links, and limitations. Translate naturally without adding promises. Link to detailed implementation documentation instead of repeating it throughout both language versions.
+- Store repository release notes in `docs/releases/<tag>.md`. When synchronizing a GitHub Release, verify its online body; editing a local file does not update the published page. Wording-only changes must not recreate tags or replace online installers. Clearly distinguish local commits, remote pushes, and published-page updates when reporting completion.
 
-### 公开表述与提交前核对
+### Public Claims and Pre-Commit Review
 
-- 用户为解释授权、合作或开发背景提供的信息，不自动视为要求公开披露的产品定位。除非用户明确要求对外这样表述，否则使用中性的项目用途描述，不据此新增“团队子产品”“官方出品”“官方授权”或组织背书声明，也不反向推断为“非官方”或“独立衍生”。不需要此类声明即可完成任务时，直接省略，不为文案额外增加确认流程。
-- 区分项目用途、开发主体、素材来源、使用许可和用户访问条件。致谢不替代授权说明，代码许可证不扩大为品牌素材或社区数据的许可；只陈述已确认且适合公开的信息。
-- 提交前核对文案与实际版本、实现、默认值、命令、路径、资产名称和验证证据；检查中英文一致性、Markdown 格式、本地链接和标题锚点。删除聊天背景、重复信息与未经证实的关系或性能声明。文案修订遵循上方中文规范，不用统一模板牺牲准确性。
+- Background information supplied to explain authorization, collaboration, or development does not automatically authorize publishing a product-affiliation claim. Unless the user explicitly requests that public wording, describe the project's purpose neutrally. Do not infer claims such as "a team sub-product," "officially produced," "officially authorized," or organizational endorsement; do not infer the opposite labels, such as "unofficial" or "independent derivative," either. If such claims are unnecessary, omit them rather than introducing an extra confirmation step.
+- Distinguish project purpose, developer identity, asset provenance, usage licenses, and user access requirements. Attribution does not replace authorization, and a code license does not extend to brand assets or community data. State only confirmed information appropriate for publication.
+- Before committing, verify copy against the actual version, implementation, defaults, commands, paths, asset names, and validation evidence. Check bilingual consistency, Markdown formatting, local links, and heading anchors. Remove conversational background, repetition, and unsupported affiliation or performance claims. Follow the Chinese copywriting guidance above when editing Chinese text; do not sacrifice accuracy for a uniform template.
 
 ## Security & Configuration
 
