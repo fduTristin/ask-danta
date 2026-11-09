@@ -128,8 +128,8 @@ label { display: block; }
 .welcome { text-align: center; padding: 0 0 8px; }
 .welcome img { display: block; width: 88px; height: 88px; object-fit: contain; margin: 0 auto 20px; }
 .welcome h1 { font-size: 25px; line-height: 1.5; font-weight: 500; letter-spacing: -.7px; margin: 0; }
-.empty-layout .messages-scroll { flex: 0 1 auto; margin-top: clamp(16px, 9vh, 110px); }
-.empty-layout .messages { padding: 16px 0 20px; }
+.empty-layout .messages-scroll { display: flex; flex-direction: column; }
+.empty-layout .messages { margin: auto; padding: 16px 0 20px; }
 .composer-region { position: relative; width: min(640px, calc(100% - 48px)); margin: 0 auto; padding: 8px 0 max(20px, env(safe-area-inset-bottom)); flex-shrink: 0; }
 .composer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 8px; background: var(--soft); border: 1px solid var(--border); border-radius: 23px; padding: 10px 12px; }
 .composer textarea { grid-column: 2; grid-row: 1; display: block; width: 100%; min-width: 0; min-height: 32px; max-height: 180px; resize: none; background: transparent; border: 0; outline: none; padding: 3px 7px; color: inherit; font-size: 16px; border-radius: 5px; line-height: 1.6; }
@@ -231,7 +231,6 @@ button.danger:hover:not(:disabled) { background: #fbe1de; color: #8e2c29; }
   .messages { padding-top: 16px; }
   .welcome h1 { font-size: 23px; }
   .welcome img { width: 80px; height: 80px; }
-  .empty-layout .messages-scroll { margin-top: clamp(8px, 7vh, 70px); }
   .user p { max-width: 94%; }
   button { min-height: 44px; }
   button.send { min-height: 44px; width: 44px; height: 44px; }
@@ -243,7 +242,6 @@ button.danger:hover:not(:disabled) { background: #fbe1de; color: #8e2c29; }
   .modal { padding: 20px; }
 }
 @media (max-height: 550px) {
-  .empty-layout .messages-scroll { margin-top: 0; }
   .welcome img { width: 42px; height: 42px; margin-bottom: 8px; }
   .welcome h1 { font-size: 20px; }
   .empty-layout .messages { padding: 4px 0; }

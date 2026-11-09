@@ -10,8 +10,8 @@ import { HistoryMenu } from './HistoryMenu';
 import { api, ApiError, errorText } from './api';
 import type { Health, Message, Progress, Session, SourceMode, Summary } from './api';
 
-type Action = { kind: 'rename' | 'delete' | 'switch'; target?: Summary; nextId?: string };
-type Run = { controller: AbortController; id?: string; done: Promise<void> };
+type Action = { kind: 'rename' | 'delete'; target?: Summary };
+type Run = { controller: AbortController; id: string; question: string; progress: Progress | null; done: Promise<void> };
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function App() {
@@ -29,7 +29,8 @@ export function App() {
   const [pendingQuestion, setPendingQuestion] = useState('');
   const [failedQuestion, setFailedQuestion] = useState('');
   const [progress, setProgress] = useState<Progress | null>(null);
-  const run = useRef<Run | null>(null);
+  const runs = useRef(new Map<string, Run>());
+  const feedback = useRef(new Map<string, { error: string; info: string; question: string; beforeCount: number }>());
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -64,8 +65,15 @@ export function App() {
     if (value) localStorage.setItem('danta-current-session', value.session_id);
     else localStorage.removeItem('danta-current-session');
     if (restoreDraft) {
+      const active = value ? runs.current.get(value.session_id) : undefined;
+      let result = value ? feedback.current.get(value.session_id) : undefined;
+      if (value && result && value.messages.length > result.beforeCount) {
+        feedback.current.delete(value.session_id); result = undefined;
+      }
+      setBusy(!!active); setPendingQuestion(active?.question || ''); setProgress(active?.progress || null);
+      setFailedQuestion(result?.question || ''); setError(result?.error || ''); setInfo(result?.info || '');
       setMode(value?.source_preference || 'auto');
-      editInput(value?.busy ? '' : drafts.current.get(value?.session_id || 'new') ?? value?.pending_question ?? '');
+      editInput(value?.busy || active ? '' : drafts.current.get(value?.session_id || 'new') ?? value?.pending_question ?? '');
       nearBottom.current = true; setShowLatest(false);
       requestAnimationFrame(() => bottom.current?.scrollIntoView({ block: 'end' }));
     }
@@ -107,7 +115,7 @@ export function App() {
     const media = window.matchMedia('(max-width: 760px)');
     const resize = () => { setMobile(media.matches); setSidebar(!media.matches); };
     media.addEventListener('change', resize);
-    return () => { media.removeEventListener('change', resize); run.current?.controller.abort(); };
+    return () => { media.removeEventListener('change', resize); runs.current.forEach(run => run.controller.abort()); };
   }, []);
   // A restored tab may observe a request that is still running in another tab.
   useEffect(() => {
@@ -180,21 +188,20 @@ export function App() {
     throw new Error('当前回答仍在结束处理中，请稍后重试；不会切换或重复发送。');
   }
   async function stop() {
-    const currentRun = run.current;
-    const id = currentRun?.id || sessionRef.current?.session_id;
+    const id = sessionRef.current?.session_id;
+    const currentRun = id ? runs.current.get(id) : undefined;
     if (id) await api(`/api/sessions/${id}/cancel`, 'POST');
     currentRun?.controller.abort();
     if (currentRun) await currentRun.done;
-    if (id) install(await synchronize(id));
+    if (id) { const value = await synchronize(id); if (sessionRef.current?.session_id === id) install(value); }
   }
   async function switchTo(id?: string) {
     if (actionLock.current) return;
     actionLock.current = true; setWorking(true); setError('');
     drafts.current.set(sessionRef.current?.session_id || 'new', inputRef.current);
     try {
-      if (run.current || sessionRef.current?.busy) await stop();
       install(id ? await api<Session>(`/api/sessions/${id}`) : null, true);
-      setPendingQuestion(''); setFailedQuestion(''); setInfo(''); setMenu(undefined);
+      setMenu(undefined);
       if (mobile) setSidebar(false);
       setAction(null);
     } catch (cause) { setError(errorText(cause)); }
@@ -202,21 +209,16 @@ export function App() {
   }
   function navigate(id?: string) {
     if (id && id === sessionRef.current?.session_id) { if (mobile) setSidebar(false); return; }
-    if (activeBusy) { setAction({ kind: 'switch', nextId: id }); if (mobile) setSidebar(false); }
-    else void switchTo(id);
+    void switchTo(id);
   }
 
-  async function executeTurn(currentRun: Run, question: string) {
-    let id = sessionRef.current?.session_id;
-    const beforeCount = sessionRef.current?.messages.length || 0;
+  async function executeTurn(currentRun: Run, question: string, original: Session) {
+    const id = original.session_id;
+    const beforeCount = original.messages.length;
     let finalReceived = false;
     let failure = '';
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
-      const value = sessionRef.current || await api<Session>('/api/sessions', 'POST');
-      id = value.session_id; currentRun.id = id;
-      if (!sessionRef.current) install(value);
-      drafts.current.delete('new');
       if (currentRun.controller.signal.aborted) throw new Error('已停止');
       const response = await fetch(`/api/sessions/${id}/chat`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -232,7 +234,7 @@ export function App() {
         const data = frame.split('\n').filter(line => line.startsWith('data: ')).map(line => line.slice(6)).join('\n');
         if (!data) return;
         const item = JSON.parse(data) as { type: string; message?: Message; progress?: Progress; error?: { message?: string } };
-        if (item.progress) setProgress(item.progress);
+        if (item.progress) { currentRun.progress = item.progress; if (sessionRef.current?.session_id === id) setProgress(item.progress); }
         if (item.type === 'error') failure = item.error?.message || '本轮未完成，请重试。';
         if (item.type === 'final' && item.message) finalReceived = true;
       }
@@ -246,22 +248,34 @@ export function App() {
     } catch (cause) { failure = currentRun.controller.signal.aborted ? '已停止，问题已保留。' : errorText(cause); }
     finally {
       await reader?.cancel().catch(() => {}); reader?.releaseLock();
-      if (id) {
-        try {
-          const value = await synchronize(id);
-          const committed = value.messages.length > beforeCount;
-          install(value);
-          if (committed) { editInput(''); setFailedQuestion(''); drafts.current.delete(id); setError(''); setInfo(''); }
-          else { editInput(question); setFailedQuestion(question); drafts.current.set(id, question); setError(currentRun.controller.signal.aborted ? '' : failure); setInfo(currentRun.controller.signal.aborted ? '已停止，问题已保留，可修改后重新发送。' : ''); }
-        } catch (cause) { setError(`${errorText(cause)} 请先重新检查会话，再发送问题。`); editInput(question); setFailedQuestion(question); }
-      } else { setError(failure); editInput(question); setFailedQuestion(question); }
-      setPendingQuestion(''); setBusy(false); setProgress(null); run.current = null;
+      let value: Session | undefined;
+      let result = { error: '', info: '', question: '' };
+      try {
+        value = await synchronize(id);
+        if (value.messages.length > beforeCount) drafts.current.delete(id);
+        else {
+          drafts.current.set(id, question);
+          result = { question, error: currentRun.controller.signal.aborted ? '' : failure,
+            info: currentRun.controller.signal.aborted ? '已停止，问题已保留，可修改后重新发送。' : '' };
+        }
+      } catch (cause) {
+        drafts.current.set(id, question);
+        result = { question, error: `${errorText(cause)} 请先重新检查会话，再发送问题。`, info: '' };
+      }
+      feedback.current.set(id, { ...result, beforeCount });
+      runs.current.delete(id);
+      // A background completion must never replace the selected conversation or its draft.
+      if (sessionRef.current?.session_id === id) {
+        if (value) install(value);
+        editInput(result.question); setFailedQuestion(result.question); setError(result.error); setInfo(result.info);
+        setPendingQuestion(''); setBusy(false); setProgress(null);
+      }
       await refreshList().catch(() => {}); void refreshHealth();
     }
   }
   async function send(text = inputRef.current, editIndex?: number, intent: 'edit' | 'retry' = 'edit') {
     const question = text.trim();
-    if (run.current || actionLock.current || activeBusy || !ready || !enabled || !question) return;
+    if (runs.current.has(sessionRef.current?.session_id || '') || actionLock.current || activeBusy || !ready || !enabled || !question) return;
     // Reconcile with the server before sending, especially after a lost final event.
     actionLock.current = true; setWorking(true); setError(''); setInfo('');
     try {
@@ -285,11 +299,14 @@ export function App() {
         });
         install(target); editInput(question);
       }
-      editInput(''); drafts.current.delete(sessionRef.current?.session_id || 'new');
+      if (!sessionRef.current) { install(await api<Session>('/api/sessions', 'POST')); drafts.current.delete('new'); }
+      const original = sessionRef.current!;
+      feedback.current.delete(original.session_id);
+      editInput(''); drafts.current.delete(original.session_id);
       setFailedQuestion(''); setProgress(null); setBusy(true); setPendingQuestion(question); nearBottom.current = true;
-      const currentRun: Run = { controller: new AbortController(), id: sessionRef.current?.session_id, done: Promise.resolve() };
-      run.current = currentRun;
-      currentRun.done = executeTurn(currentRun, question);
+      const currentRun: Run = { controller: new AbortController(), id: original.session_id, question, progress: null, done: Promise.resolve() };
+      runs.current.set(original.session_id, currentRun);
+      currentRun.done = executeTurn(currentRun, question, original);
     } catch (cause) { setError(errorText(cause)); }
     finally { actionLock.current = false; setWorking(false); }
   }
@@ -304,7 +321,6 @@ export function App() {
   }
   async function performAction() {
     if (!action || actionLock.current) return;
-    if (action.kind === 'switch') { await switchTo(action.nextId); return; }
     actionLock.current = true; setWorking(true); setError('');
     const target = action.target || sessionRef.current;
     try {
@@ -314,7 +330,7 @@ export function App() {
         const value = await api<Session>(`/api/sessions/${id}`, 'PATCH', { title: rename.trim() });
         if (sessionRef.current?.session_id === id) install(value);
       } else if (action.kind === 'delete') {
-        await api(`/api/sessions/${id}`, 'DELETE'); drafts.current.delete(id);
+        await api(`/api/sessions/${id}`, 'DELETE'); drafts.current.delete(id); feedback.current.delete(id);
         if (sessionRef.current?.session_id === id) { install(null, true); setFailedQuestion(''); }
       }
       await refreshList(); setAction(null); setMenu(undefined);
@@ -366,13 +382,13 @@ export function App() {
         </div>
       </div>
     </main>
-    {settingsOpen && <SettingsPanel health={health} busy={activeBusy} initialCategory={settingsCategory} close={() => setSettingsOpen(false)} onSaved={refreshHealth} />}
+    {settingsOpen && <SettingsPanel health={health} busy={activeBusy || runs.current.size > 0 || list.some(item => item.busy)} initialCategory={settingsCategory} close={() => setSettingsOpen(false)} onSaved={refreshHealth} />}
     {consent && <Modal title="启用树洞检索" close={() => setConsent(false)}><p>允许把检索到的相关树洞片段发送给已配置的模型，用于回答你的问题。回答及必要引用片段会保存在本机聊天记录中。</p><div className="modal-actions"><button onClick={() => setConsent(false)}>取消</button><button className="primary" onClick={() => { localStorage.setItem('danta-campus-consent', '1'); setConsent(false); void changeMode(consentMode, true); }}>允许使用</button></div></Modal>}
-    {action && <Modal title={action.kind === 'rename' ? '重命名对话' : action.kind === 'delete' ? '删除对话' : '停止并切换对话'} close={() => setAction(null)} locked={working}>
+    {action && <Modal title={action.kind === 'rename' ? '重命名对话' : '删除对话'} close={() => setAction(null)} locked={working}>
       <form onSubmit={event => { event.preventDefault(); void performAction(); }}>
-        {action.kind === 'rename' ? <label>对话名称<input autoFocus value={rename} maxLength={80} required onChange={event => setRename(event.target.value)} /></label> : <p>{action.kind === 'switch' ? '切换会停止当前回答。已保存的消息和未发送的问题会留在原会话。' : '这段对话的消息与引用将从本机删除，操作无法撤销。'}</p>}
+        {action.kind === 'rename' ? <label>对话名称<input autoFocus value={rename} maxLength={80} required onChange={event => setRename(event.target.value)} /></label> : <p>这段对话的消息与引用将从本机删除，操作无法撤销。</p>}
         {error && <p className="inline-error" role="alert">{error}</p>}
-        <div className="modal-actions"><button type="button" disabled={working} onClick={() => setAction(null)}>取消</button><button type="submit" className={action.kind === 'delete' ? 'danger' : 'primary'} disabled={working || action.kind === 'rename' && !rename.trim()}>{working ? '处理中…' : action.kind === 'rename' ? '保存名称' : action.kind === 'switch' ? '停止并切换' : '确认删除'}</button></div>
+        <div className="modal-actions"><button type="button" disabled={working} onClick={() => setAction(null)}>取消</button><button type="submit" className={action.kind === 'delete' ? 'danger' : 'primary'} disabled={working || action.kind === 'rename' && !rename.trim()}>{working ? '处理中…' : action.kind === 'rename' ? '保存名称' : '确认删除'}</button></div>
       </form>
     </Modal>}
   </div>;

@@ -23,6 +23,11 @@ Use Python 3.11+, uv, and Node.js 22.12+ with npm. Run from the repository root:
 - `uv run --frozen python scripts/check_campus.py`: validate campus search and thread contracts directly, without starting the backend; requires project-owned credentials and reads real posts.
 - `uv run --frozen python scripts/check_research_chat.py`: validate the live cross-source Agent tool chain and web-only followup; requires a running stage-four backend and consumes model/search quota.
 
+## UI Design and Local Release
+
+- UI 设计优先参考 ChatGPT 网页端和桌面端的布局、交互与视觉层级，并保留本项目的品牌与中文文案。
+- 每次完成新改动后，必须在本地执行 `npm run desktop:dist`，将构建产物输出到 `release/`。如已有文件被运行中的应用占用，可使用 `release/` 下的独立子目录；交付时说明实际路径与验证结果。
+
 ## Coding Style & Naming Conventions
 
 Use four-space Python indentation, `snake_case` functions/modules, and `PascalCase` classes. Add type annotations to new interfaces and validate external data with Pydantic.

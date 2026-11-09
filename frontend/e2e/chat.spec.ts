@@ -259,21 +259,58 @@ test('campus Markdown images load on expansion and handle broken or unsupported 
   }
 });
 
-test('switching cancels a running answer and preserves its question', async ({ page }) => {
-  await page.getByRole('textbox', { name: '你的问题或追问' }).fill('等待合成回答');
-  await page.getByRole('button', { name: '发送', exact: true }).click();
-  await expect(page.getByRole('button', { name: '停止回答' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEmpty();
-  await expect(page.locator('.user.pending')).toHaveText('等待合成回答');
-  await expect(page.getByRole('button', { name: /^搜索范围：/ })).toBeDisabled();
+test('parallel conversations preserve drafts and stop independently', async ({ page, request }) => {
+  test.setTimeout(60_000);
+  const input = page.getByRole('textbox', { name: '你的问题或追问' });
+  const start = async (question: string) => {
+    await input.fill(question);
+    await page.getByRole('button', { name: '发送', exact: true }).click();
+    await expect(page.locator('.user.pending')).toHaveText(question);
+  };
+  const select = (title: string) => page.locator('.history-title').filter({ hasText: title }).click();
+  const busyCount = async () => (await (await request.get('/api/sessions')).json()).sessions.filter((s: { busy: boolean }) => s.busy).length;
+  await start('等待第一段回答');
   await page.getByRole('button', { name: '新对话', exact: true }).click();
-  await page.getByRole('button', { name: '停止并切换', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '今天，有什么校园问题？' })).toBeVisible();
-  await page.getByRole('button', { name: '等待合成回答', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toHaveValue('等待合成回答');
-  await expect(page.getByRole('region', { name: '回答执行记录' }).getByRole('button')).toContainText('回答已停止');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await start('等待第二段回答');
+  await expect.poll(busyCount).toBe(2);
+  await select('等待第一段回答');
+  await expect(page.locator('.user.pending')).toHaveText('等待第一段回答');
+  await expect(input).toBeEmpty();
+  await page.getByRole('button', { name: '停止回答' }).click();
+  await expect(input).toHaveValue('等待第一段回答');
+  await expect(input).toBeEnabled();
+  await expect.poll(busyCount).toBe(1);
+  await select('等待第二段回答');
+  await expect(page.locator('.user.pending')).toHaveText('等待第二段回答');
+  await page.getByRole('button', { name: '新对话', exact: true }).click();
+  await input.fill('保留未发送草稿');
+  await expect.poll(busyCount, { timeout: 30_000 }).toBe(0);
+  await expect(page.locator('.history-title small')).toHaveCount(0);
+  await expect(input).toHaveValue('保留未发送草稿');
+  await expect(page.locator('.welcome')).toBeVisible();
   await expect(page.locator('.assistant')).toHaveCount(0);
-  await expect(page.getByRole('textbox', { name: '你的问题或追问' })).toBeEnabled();
+  await select('等待第二段回答');
+  await expect(page.locator('.assistant')).toHaveCount(1);
+  await expect(input).toBeEmpty();
+  await select('等待第一段回答');
+  await expect(input).toHaveValue('等待第一段回答');
+  await expect(page.locator('.assistant')).toHaveCount(0);
+  await page.getByRole('button', { name: '新对话', exact: true }).click();
+  await expect(input).toHaveValue('保留未发送草稿');
+});
+
+test('empty chat centers welcome and anchors composer on desktop and mobile', async ({ page }) => {
+  for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const composer = (await page.locator('.composer').boundingBox())!;
+    const area = (await page.locator('.messages-scroll').boundingBox())!;
+    const welcome = (await page.locator('.welcome').boundingBox())!;
+    expect(composer.y).toBeGreaterThan(viewport.height - 130);
+    expect(Math.abs(welcome.x + welcome.width / 2 - (area.x + area.width / 2))).toBeLessThan(2);
+    expect(Math.abs(welcome.y + welcome.height / 2 - (area.y + area.height / 2))).toBeLessThan(10);
+    await page.screenshot({ path: `../.private/verification/stage6/bottom-composer-${viewport.width}.png` });
+  }
 });
 
 test('mobile drawer, login failure, safe Markdown and keyboard', async ({ page }) => {
