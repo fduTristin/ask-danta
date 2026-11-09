@@ -36,7 +36,7 @@ Use two-space TypeScript indentation, single-quoted strings, semicolons, `Pascal
 
 ## 中文文档与叙述规范
 
-适用于 README、项目文档、中文 PR 描述、界面说明和演示文案。默认使用正式、直接、自然的现代汉语；提交信息仍遵循下方的英文约定。用户明确指定文体时，以用户要求为准。
+适用于 README、项目文档、中文 PR 描述、发版说明、界面说明和演示文案。默认使用正式、直接、自然的现代汉语；提交信息仍遵循下方的英文约定。用户明确指定文体时，以用户要求为准。
 
 ### 内容与语气
 
@@ -75,7 +75,7 @@ Use two-space TypeScript indentation, single-quoted strings, semicolons, `Pascal
 
 Use pytest, FastAPI `TestClient`, and HTTPX `MockTransport`. Name files `test_*.py` and functions `test_*`. Tests must ignore local credentials and avoid external requests. Cover changed behavior, validation, upstream failures, and secret redaction. No numerical coverage threshold is configured. Record live verification separately from mocked tests; check desktop and narrow layouts for UI changes.
 
-## Commit & Pull Request Guidelines
+## Commit, Pull Request & Release Guidelines
 
 ### Commit Convention
 
@@ -94,7 +94,29 @@ Write commit messages in English using this format:
 
 ### Pull Requests
 
-PRs should explain behavior, scope, validation, and limitations. Link issues or plan milestones; include screenshots for UI changes.
+PR 描述面向未参与开发过程的审阅者，解释本次代码差异；Release 面向使用该版本的用户，解释可用功能、安装与升级。两者分别编写，不直接复制提交列表或聊天记录。
+
+- 标题概括最终改动及其作用；正文先写具体问题与改动后的行为。需要时用触发条件、改动前后示例帮助理解，避免“优化体验”“完善功能”等无法核验的概括。
+- 按改动复杂度说明范围、必要的实现理由、验证结果及实际限制。简单修改可以只写一两段与验证说明，不强套固定章节；复杂修改再按内容分节。
+- 只写帮助审阅的技术细节。删除开发流水账、已放弃方案和与最终差异无关的修复过程；确实影响设计取舍时才解释历史原因。范围变化后同步更新标题和正文。
+- 验证说明列出实际执行的检查及结果，区分自动化测试、模拟响应、真实服务联调和人工验证。不将构建通过写成完整功能验收；未验证的重要部分如实说明原因。
+- 关联确实相关的 Issue 或计划条目；界面改动附脱敏截图。涉及破坏性变更时说明受影响用户与迁移方法。没有对应 Issue、测试结果或性能数据时不得编造。
+
+### Release Notes
+
+- 发布说明以对应标签与实际分发的安装包为准，不将当前工作区、主分支或计划中的功能写成已发布。首次发布介绍主要能力，后续版本突出相对上一版的变化与用户影响；不把项目建立以来的所有提交展开成清单。
+- 建议按“版本简介—下载与使用条件—主要功能或变更—升级说明与已知限制—文档与反馈入口”组织，按版本实际需要取舍。把模型密钥、搜索服务、账号权限及可能产生费用等影响使用的条件放在功能长列表之前。
+- 下载链接核对实际资产名称、版本、系统和架构；已发布版本给出对应版本的链接，不使用可能跳转到其他版本的 `latest` 代替。安装与源码构建入口分开，普通用户无需先阅读构建流程。
+- 功能描述采用用户能观察到的行为。协议字段、内部重试预算、进程等待时间等细节放入开发文档；没有用户影响的样式微调不作为首次发版亮点。确有用户影响的修复可简述触发条件与修复结果。
+- 保留实际适用的数据流向、服务依赖、签名状态、升级迁移和功能限制。避免将“本地运行”写成“离线运行”，或将“引用与核对”写成准确性保证；密钥存储方式、文件权限和接口不返回原文应分别准确说明。
+- 中英文版本的功能范围、前提、确定程度、下载链接与限制保持一致。允许自然翻译，不在翻译中新增承诺；长篇实现说明通过文档链接提供，不在双语正文中重复堆叠。
+- 仓库发布说明保存在 `docs/releases/<tag>.md`。需要同步 GitHub Release 时核对线上正文；修改本地文件不代表线上已更新。仅修改文案时不重建标签、不替换线上安装包；交付时明确本地提交、远程推送和线上发布页各自的状态。
+
+### 公开表述与提交前核对
+
+- 用户为解释授权、合作或开发背景提供的信息，不自动视为要求公开披露的产品定位。除非用户明确要求对外这样表述，否则使用中性的项目用途描述，不据此新增“团队子产品”“官方出品”“官方授权”或组织背书声明，也不反向推断为“非官方”或“独立衍生”。不需要此类声明即可完成任务时，直接省略，不为文案额外增加确认流程。
+- 区分项目用途、开发主体、素材来源、使用许可和用户访问条件。致谢不替代授权说明，代码许可证不扩大为品牌素材或社区数据的许可；只陈述已确认且适合公开的信息。
+- 提交前核对文案与实际版本、实现、默认值、命令、路径、资产名称和验证证据；检查中英文一致性、Markdown 格式、本地链接和标题锚点。删除聊天背景、重复信息与未经证实的关系或性能声明。文案修订遵循上方中文规范，不用统一模板牺牲准确性。
 
 ## Security & Configuration
 
